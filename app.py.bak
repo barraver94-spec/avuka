@@ -1,0 +1,645 @@
+"""
+Avuka Fire Forms — PDF Renderer v4
+Approach: fitz (PyMuPDF) + insert_htmlbox for accurate Hebrew RTL text.
+Background PNGs from backgrounds/ are embedded as PDF page backgrounds.
+
+POST /render  →  { form_num, data: {common, rows} }  →  { pdf_base64, filename }
+GET  /health  →  { status: "ok" }
+
+Field-name contract (matches Base44 schema exactly):
+  Form 1  → FireStation rows
+  Form 2  → FireExtinguisher rows
+  Form 3  → ElectricalPanel rows (form_type="3")
+  Form 4  → FireDetectionData rows[0]  (single record, JSON sub-fields parsed here)
+  Form 5  → ElectricalPanel rows (form_type="5")
+  Form 6  → EmergencyAnnouncementData rows[0]  (single record)
+  Form 7  → SprinklerData rows[0]  (single record)
+"""
+import os, io, base64, traceback, re, json
+import fitz
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BG_DIR   = os.path.join(BASE_DIR, 'backgrounds')
+
+# ── Page sizes ───────────────────────────────────────────────────────────────
+PORTRAIT  = (595.32, 841.92)
+LANDSCAPE = (841.92, 595.32)
+FORM_PAGES = {
+    1: [PORTRAIT, LANDSCAPE],
+    2: [PORTRAIT, LANDSCAPE],
+    3: [PORTRAIT, PORTRAIT],
+    4: [PORTRAIT, PORTRAIT, PORTRAIT, PORTRAIT],
+    5: [PORTRAIT, PORTRAIT],
+    6: [PORTRAIT, PORTRAIT],
+    7: [PORTRAIT],
+}
+
+# ── Core insert helper ───────────────────────────────────────────────────────
+def ic(page, x0, y0, x1, y1, text, fs=9, align="center"):
+    """Insert Hebrew RTL text into rect (x0,y0,x1,y1) in pt."""
+    if not text:
+        return
+    text = str(text)
+    h = max(y1 - y0, 6)
+    html = (
+        f'<p dir="rtl" style="font-family: Arial, sans-serif; '
+        f'font-size: {fs}px; font-weight: normal; '
+        f'text-align: {align}; margin: 0; padding: 0; '
+        f'line-height: {h}px;">{text}</p>'
+    )
+    page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html)
+
+
+# ── Digit-box helpers ────────────────────────────────────────────────────────
+# BIZ_ID (ח.פ.) — 11 individual boxes extracted from form background PNG
+ID_BOXES_X  = [43.2, 55.5, 68.0, 81.0, 93.5, 106.5, 119.0, 132.0, 144.5, 157.5, 170.0]
+# BIZ_FF (מס' תיק) — 10 individual boxes
+FF_BOXES_X  = [411.6, 428.4, 445.4, 462.4, 479.9, 496.8, 513.8, 531.3, 548.3, 565.7]
+
+def ic_digits(page, boxes_x, y0, y1, value, fs=8):
+    """Place each character of value into its own cell (left-to-right)."""
+    s = str(value).strip() if value else ''
+    n = len(boxes_x) - 1
+    for i, ch in enumerate(s[:n]):
+        ic(page, boxes_x[i] + 0.5, y0, boxes_x[i+1] - 0.5, y1, ch, fs=fs, align='center')
+
+
+# ── Klali table column X boundaries ─────────────────────────────────────────
+# Biz row (RTL: fire_file | business_name | business_type | customer_id)
+BIZ_FF = (411.6, 565.7)   # fire_file_number
+BIZ_BN = (298.0, 411.1)   # business_name
+BIZ_BT = (170.4, 297.5)   # business_type
+BIZ_ID = ( 43.2, 170.0)   # customer_id / ח.פ. / ע.מ.
+
+# Address row (RTL: city | street | house_number | zip | po_box)
+ADDR_CI = (461.1, 565.7)  # city
+ADDR_ST = (280.6, 460.7)  # street
+ADDR_HN = (234.3, 280.2)  # house_number
+ADDR_ZP = (143.8, 233.8)  # zip
+ADDR_PB = ( 43.2, 143.3)  # po_box
+
+# Contact row (RTL: contact_name | contact_role | contact_phone | contact_email)
+CONT_CN = (418.8, 565.7)  # contact_name
+CONT_CR = (362.1, 418.3)  # contact_role
+CONT_CP = (234.3, 361.6)  # contact_phone
+CONT_CE = ( 43.2, 233.8)  # contact_email
+
+# ── Per-form Y ranges for klali rows ─────────────────────────────────────────
+KLALI_Y = {
+    1: {'biz': (304.6, 319.2), 'addr': (351.5, 366.1), 'cont': (397.0, 411.6)},
+    2: {'biz': (276.3, 290.9), 'addr': (321.6, 336.4), 'cont': (367.1, 381.9)},
+    3: {'biz': (264.7, 279.3), 'addr': (310.2, 324.8), 'cont': (355.6, 370.2)},
+    4: {'biz': (303.0, 317.0), 'addr': (357.1, 371.1), 'cont': (412.7, 427.3)},
+    5: {'biz': (289.9, 304.5), 'addr': (336.7, 351.3), 'cont': (382.2, 396.8)},
+    6: {'biz': (315.2, 329.8), 'addr': (362.0, 376.6), 'cont': (407.5, 422.1)},
+    7: {'biz': (316.8, 331.4), 'addr': (363.7, 378.3), 'cont': (409.2, 423.8)},
+}
+
+# ── Per-form Y range for date field ──────────────────────────────────────────
+DATE_Y = {
+    1: (208.8, 221.7),
+    2: (180.2, 193.2),
+    3: (167.4, 180.3),
+    4: (178.3, 191.3),
+    5: (194.0, 207.0),
+    6: (207.6, 220.5),
+    7: (220.9, 233.9),
+}
+DATE_X = (56.8, 128.7)
+
+# ── Enum translation maps ─────────────────────────────────────────────────────
+INSP_TYPE_MAP = {
+    'annual':             'שוטפת שנתית',
+    'major':              'יסודית',
+    'pressure':           'לחץ',
+    'major_and_pressure': 'יסודית+לחץ',
+}
+EXT_TYPE_MAP = {
+    'powder': 'אבקה',
+    'halon':  'הלוקרבון',
+    'water':  'מים',
+    'foam':   'קצף',
+    'co2':    'CO2',
+}
+SUPPRESS_TYPE_MAP = {
+    'aerosol': 'אירוסול',
+    'gas':     'גז',
+}
+PANEL_TYPE_MAP = {
+    'zone':        'אזורית',
+    'analog':      'אנלוגית',
+    'addressable': 'כתובתית',
+    'interactive': 'אינטראקטיבית',
+}
+WATER_SOURCE_MAP = {
+    'pumps':        'מערכת משאבות',
+    'municipality': 'רשות המים',
+}
+YN_MAP = {  # enum: present/absent/na
+    'present': 'V',
+    'absent':  'X',
+    'na':      '---',
+}
+ROUTE_MAP = {
+    'police160': 'מפרט משטרה 160',
+    'ti1220':    'ת"י 1220 חלק 3',
+}
+
+
+def _yn(val):
+    """Boolean → תקין / לא תקין."""
+    if val is None or val == '':
+        return ''
+    return 'תקין' if bool(val) else 'לא תקין'
+
+
+def _check(val):
+    """Boolean → ✓ / empty."""
+    return '✓' if bool(val) else ''
+
+
+def _safe_json(s, default=None):
+    """Parse JSON string safely, return default on failure."""
+    if default is None:
+        default = []
+    if not s:
+        return default
+    try:
+        return json.loads(s)
+    except Exception:
+        return default
+
+
+# ── Table definitions: page 2+ ───────────────────────────────────────────────
+# Column keys must match the normalized field names used in fill_table_page.
+FORM_TABLES = {
+    1: {
+        'fire_file_pos': {'left': 100, 'top': 90, 'width': 320, 'height': 13},
+        'row_start_y': 174, 'row_height': 14, 'max_rows': 15,
+        'columns': [
+            {'key': 'num',     'left': 784, 'width': 35},
+            {'key': 'location','left': 580, 'width': 203},
+            {'key': 'hose',    'left': 518, 'width': 62},
+            {'key': 'nozzle',  'left': 454, 'width': 64},
+            {'key': 'cabinet', 'left': 383, 'width': 71},
+            {'key': 'reel',    'left': 312, 'width': 71},
+            {'key': 'notes',   'left':  72, 'width': 241},
+        ],
+    },
+    2: {
+        'fire_file_pos': {'left': 429,   'top': 94.4,  'width': 124.4, 'height': 13},
+        'biz_name_pos':  {'left': 496.3, 'top': 145.5, 'width': 183.1, 'height': 13},
+        'row_start_y': 215.7, 'row_height': None, 'max_rows': 19,
+        'row_y': [215.7, 230.6, 245.6, 260.4, 275.5, 290.5, 305.4, 320.4,
+                  335.2, 350.2, 364.3, 378.3, 392.4, 406.4, 420.5, 434.5,
+                  448.5, 462.7, 476.7, 490.8],
+        'columns': [
+            {'key': 'num',          'left': 782.3, 'width': 36.9},
+            {'key': 'id',           'left': 726.6, 'width': 55.2},
+            {'key': 'location',     'left': 602.0, 'width': 124.1},
+            {'key': 'type',         'left': 531.2, 'width':  70.3},
+            {'key': 'size_kg',      'left': 478.4, 'width':  52.3},
+            {'key': 'manufacturer', 'left': 390.2, 'width':  87.7},
+            {'key': 'next_major',   'left': 320.8, 'width':  68.9},
+            {'key': 'next_pressure','left': 237.4, 'width':  83.4},
+            {'key': 'ok',           'left': 206.4, 'width':  30.5},
+            {'key': 'not_ok',       'left': 173.5, 'width':  32.4},
+            {'key': 'insp_type',    'left':  92.8, 'width':  80.3},
+            {'key': 'notes',        'left':  25.0, 'width':  67.3},
+        ],
+    },
+    3: {
+        'fire_file_pos': {'left': 459, 'top': 100, 'width': 115, 'height': 13},
+        'row_start_y': 212, 'row_height': 14, 'max_rows': 15,
+        'columns': [
+            {'key': 'num',        'left': 461, 'width':  91},
+            {'key': 'location',   'left': 369, 'width':  92},
+            {'key': 'amperage',   'left': 291, 'width':  78},
+            {'key': 'disconnect', 'left': 173, 'width': 118},  # has_disconnect → ✓
+            {'key': 'detection',  'left': 115, 'width':  58},  # has_detection → ✓
+            {'key': 'suppress',   'left':  57, 'width':  58},  # has_suppression → ✓
+        ],
+    },
+    # Form 4 (FireDetectionData) is handled per-page in fill_form4_page()
+    # FORM_TABLES[4] still used for fire_file header on page 2+
+    4: {
+        'fire_file_pos': {'left': 459, 'top': 100, 'width': 115, 'height': 13},
+        # Detector table — page 2
+        'detector_start_y': 170, 'detector_row_h': 18, 'detector_max': 15,
+        'detector_cols': [
+            {'key': 'det_num',      'left': 461, 'width':  60},
+            {'key': 'det_location', 'left': 350, 'width': 110},
+            {'key': 'det_type',     'left': 230, 'width': 119},
+            {'key': 'det_zone',     'left': 140, 'width':  89},
+            {'key': 'det_status',   'left':  30, 'width': 109},
+        ],
+        # Phone/dialer table — page 3
+        'phone_start_y': 160, 'phone_row_h': 18, 'phone_max': 10,
+        'phone_cols': [
+            {'key': 'ph_num',    'left': 461, 'width':  60},
+            {'key': 'ph_number', 'left': 200, 'width': 260},
+            {'key': 'ph_note',   'left':  30, 'width': 169},
+        ],
+        # Defect table — page 4
+        'defect_start_y': 160, 'defect_row_h': 18, 'defect_max': 15,
+        'defect_cols': [
+            {'key': 'def_num',  'left': 461, 'width':  60},
+            {'key': 'def_desc', 'left':  30, 'width': 430},
+        ],
+    },
+    5: {
+        'fire_file_pos': {'left': 459, 'top': 100, 'width': 115, 'height': 13},
+        'row_start_y': 209, 'row_height': 22, 'max_rows': 10,
+        'columns': [
+            {'key': 'num',      'left': 466, 'width':  86},
+            {'key': 'location', 'left': 370, 'width':  96},
+            {'key': 'amperage', 'left': 307, 'width':  62},
+            {'key': 'sup_type', 'left': 266, 'width':  42},  # suppression_type
+            {'key': 'weight',   'left': 215, 'width':  51},  # suppression_weight_grams
+            {'key': 'status',   'left':  95, 'width': 120},  # is_functional
+        ],
+    },
+    6: {
+        'fire_file_pos': {'left': 459, 'top': 100, 'width': 115, 'height': 13},
+        # Form 6 page 2 has specific single-record fields, not a repeating table.
+        # Filled via fill_form6_page2().
+    },
+    7: {
+        # Form 7 has only 1 page — no table page needed.
+    },
+}
+
+
+# ── Page builder ─────────────────────────────────────────────────────────────
+def make_page(doc, form_num, pg_idx, w, h):
+    """Add a page to doc and embed the background PNG."""
+    page = doc.new_page(width=w, height=h)
+    bg = os.path.join(BG_DIR, f'form{form_num}_page{pg_idx + 1}.png')
+    if os.path.exists(bg):
+        page.insert_image(fitz.Rect(0, 0, w, h), filename=bg)
+    return page
+
+
+# ── Page 1: header + klali + section ג ──────────────────────────────────────
+def fill_page1(page, form_num, d):
+    fn = form_num
+
+    # Date
+    dy = DATE_Y.get(fn)
+    if dy and d.get('date'):
+        ic(page, DATE_X[0], dy[0], DATE_X[1], dy[1], d['date'], fs=9, align='center')
+
+    # Klali rows
+    ky = KLALI_Y.get(fn)
+    if ky:
+        by0, by1 = ky['biz']
+        ay0, ay1 = ky['addr']
+        cy0, cy1 = ky['cont']
+
+        ic_digits(page, FF_BOXES_X,  by0, by1, d.get('fire_file_number', ''))
+        ic(page, BIZ_BN[0], by0, BIZ_BN[1], by1, d.get('business_name', ''))
+        ic(page, BIZ_BT[0], by0, BIZ_BT[1], by1, d.get('business_type', ''))
+        ic_digits(page, ID_BOXES_X,  by0, by1, d.get('vat_number', ''))
+
+        ic(page, ADDR_CI[0], ay0, ADDR_CI[1], ay1, d.get('city', ''))
+        ic(page, ADDR_ST[0], ay0, ADDR_ST[1], ay1, d.get('street', ''))
+        ic(page, ADDR_HN[0], ay0, ADDR_HN[1], ay1, d.get('house_number', ''))
+        ic(page, ADDR_ZP[0], ay0, ADDR_ZP[1], ay1, d.get('zip', ''))
+
+        ic(page, CONT_CN[0], cy0, CONT_CN[1], cy1, d.get('contact_name', ''))
+        ic(page, CONT_CR[0], cy0, CONT_CR[1], cy1, d.get('contact_role', ''))
+        ic(page, CONT_CP[0], cy0, CONT_CP[1], cy1, d.get('contact_phone', ''))
+        ic(page, CONT_CE[0], cy0, CONT_CE[1], cy1,
+           d.get('contact_email', ''), fs=8, align='left')
+
+    _section_gim(page, fn, d)
+
+
+def _section_gim(page, fn, d):
+    """Fill form-specific bottom fields (section ג / inspector / technician)."""
+
+    if fn == 1:
+        ic(page, 373, 697, 477, 708, d.get('inspector_name', ''))
+        ic(page, 445, 735, 498, 746, d.get('business_name', ''))
+
+    elif fn == 2:
+        # Section א — inspector declaration
+        ic(page, 346.9, 409.3, 431.9, 422.3, d.get('inspector_name', ''), fs=10, align='center')
+        ic(page, 224.3, 409.3, 322.4, 422.3, d.get('inspector_id', ''),   fs=10, align='center')
+        # Section ב — inspection date
+        ic(page, 411.4, 455.8, 490.0, 468.7, d.get('date', ''), fs=10, align='center')
+        # Section ג bottom
+        ic(page, 373, 643, 477, 654, d.get('inspector_name', ''))
+        ic(page, 386, 681, 497, 692, d.get('business_name', ''))
+
+    elif fn == 3:
+        # Section א — electrician declaration
+        ic(page, 358, 383.4, 443, 396.4, d.get('inspector_name', ''))
+        ic(page, 245, 383.4, 330, 396.4, d.get('inspector_id', ''))
+        ic(page, 423, 412.8, 489, 425.8, d.get('license_type', ''))
+        ic(page, 309, 412.8, 361, 425.8, d.get('license_number', ''))
+        ic(page, 420, 444.9, 486, 457.8, d.get('date', ''))
+
+    elif fn == 4:
+        # Form 4 page 1 — panel info section
+        # These fields come from FireDetectionData (merged into common)
+        ic(page, 330, 509.4, 511, 521.4, d.get('date', ''))
+        ic(page, 311, 529.4, 492, 545.0, d.get('business_name', ''))
+        ic(page, 400, 470.0, 530, 482.0,
+           PANEL_TYPE_MAP.get(d.get('panel_type', ''), d.get('panel_type', '')))
+        ic(page, 300, 470.0, 398, 482.0, d.get('panel_model', ''))
+        ic(page, 150, 470.0, 298, 482.0, d.get('panel_manufacturer', ''))
+        ic(page, 266, 556.7, 458, 568.7, d.get('compliance_check_date', ''))
+        # Risk level (I or II) checkbox area
+        risk = d.get('risk_level', '')
+        ic(page, 440, 493.0, 520, 505.0, f'רמת סיכון {risk}' if risk else '')
+
+    elif fn == 5:
+        # Section ג — property holder
+        ic(page,  75, 604, 461, 615, d.get('property_holder_name', ''))
+        ic(page,  73, 630, 485, 641, d.get('property_address', ''))
+        ic(page, 255, 655, 451, 666, d.get('maintenance_company', ''))
+        ic(page,  71, 655, 254, 666, d.get('maintenance_phone', ''))
+        ic(page,  76, 681, 454, 692, d.get('certification_number', ''))
+        ic(page, 310, 707, 498, 718, d.get('technician_name', ''))
+        ic(page,  82, 707, 263, 718, d.get('technician_id', ''))
+
+    elif fn == 6:
+        # Inspector fields (EmergencyAnnouncementData merged into common)
+        ic(page, 310, 657, 530, 668, d.get('inspector_name', ''))
+        ic(page, 100, 657, 295, 668, d.get('inspector_id', ''))
+        # Route / standard
+        route_text = ROUTE_MAP.get(d.get('route', ''), d.get('route', ''))
+        ic(page, 200, 630, 530, 642, route_text)
+
+    elif fn == 7:
+        # SprinklerData fields (all merged into common via render_form)
+        # Section א — property holder
+        ic(page, 190, 562, 475, 574, d.get('property_holder_name', ''))
+        ic(page,  59, 562, 180, 574, d.get('property_holder_id', ''))
+        # Section ב — property address
+        ic(page, 190, 587, 475, 599, d.get('property_address', ''))
+        # Section ג — maintenance company
+        ic(page, 236, 610, 450, 621, d.get('company_name', ''))
+        # Section ד — tav teken + water source
+        ic(page, 226, 632, 416, 643, d.get('tav_teken_number', ''))
+        ws = WATER_SOURCE_MAP.get(d.get('water_source', ''), d.get('water_source', ''))
+        ic(page,  62, 632, 180, 643, ws)
+        # Section ה — technician
+        ic(page, 205, 654, 454, 665, d.get('technician_name', ''))
+        # Pressure & conclusion
+        ic(page, 300, 676, 400, 687, str(d.get('pressure_low_psi', '')))
+        ic(page, 150, 676, 250, 687, str(d.get('pressure_high_psi', '')))
+        ic(page, 200, 700, 450, 712, _yn(d.get('is_functional')))
+
+
+# ── Page 2+: table rows (forms 1, 2, 3, 5) ───────────────────────────────────
+def fill_table_page(page, form_num, rows, common):
+    tc = FORM_TABLES.get(form_num)
+    if not tc or 'columns' not in tc:
+        return
+
+    # Fire file number header
+    fp = tc['fire_file_pos']
+    ff = str(common.get('fire_file_number', ''))
+    if ff:
+        ic(page, fp['left'], fp['top'],
+           fp['left'] + fp['width'], fp['top'] + fp['height'], ff)
+
+    # Business name header (form 2)
+    if form_num == 2 and 'biz_name_pos' in tc:
+        bp = tc['biz_name_pos']
+        ic(page, bp['left'], bp['top'],
+           bp['left'] + bp['width'], bp['top'] + bp['height'],
+           str(common.get('business_name', '')), align='right')
+
+    # Table rows
+    row_ys     = tc.get('row_y')
+    row_start  = tc.get('row_start_y', 200)
+    row_h      = tc.get('row_height', 14)
+
+    for r_idx, row in enumerate(rows[:tc['max_rows']]):
+        if row_ys:
+            if r_idx + 1 >= len(row_ys):
+                break
+            y0 = row_ys[r_idx]
+            y1 = row_ys[r_idx + 1]
+        else:
+            y0 = row_start + r_idx * row_h
+            y1 = y0 + row_h
+
+        rd = dict(row)
+
+        # ── Normalize field names per form ──────────────────────────────────
+        if form_num == 1:
+            rd['num']     = str(rd.get('station_number', r_idx + 1))
+            rd['hose']    = YN_MAP.get(rd.get('hose_2inch',         'na'), '')
+            rd['nozzle']  = YN_MAP.get(rd.get('nozzle_2inch',       'na'), '')
+            rd['cabinet'] = YN_MAP.get(rd.get('equipment_cabinet',  'na'), '')
+            rd['reel']    = YN_MAP.get(rd.get('hose_reel',          'na'), '')
+
+        elif form_num == 2:
+            rd.setdefault('num', str(r_idx + 1))
+            rd['id']           = rd.get('serial_number', '')
+            rd['type']         = EXT_TYPE_MAP.get(rd.get('extinguisher_type', ''), rd.get('type', ''))
+            rd['size_kg']      = str(rd.get('size_kg', ''))
+            rd['next_major']   = rd.get('next_major_inspection', '')
+            rd['next_pressure']= rd.get('next_pressure_test', '')
+            rd['insp_type']    = INSP_TYPE_MAP.get(rd.get('inspection_type', ''), rd.get('insp_type', ''))
+            func = rd.get('is_functional', True)
+            rd['ok']     = '✓' if func     else ''
+            rd['not_ok'] = '✓' if not func else ''
+
+        elif form_num == 3:
+            rd['num']        = str(rd.get('panel_number', r_idx + 1))
+            rd['amperage']   = str(rd.get('amps', ''))
+            rd['disconnect'] = _check(rd.get('has_disconnect'))
+            rd['detection']  = _check(rd.get('has_detection'))
+            rd['suppress']   = _check(rd.get('has_suppression'))
+
+        elif form_num == 5:
+            rd['num']      = str(rd.get('panel_number', r_idx + 1))
+            rd['amperage'] = str(rd.get('amps', ''))
+            rd['sup_type'] = SUPPRESS_TYPE_MAP.get(rd.get('suppression_type', ''), rd.get('suppression_type', ''))
+            rd['weight']   = str(rd.get('suppression_weight_grams', ''))
+            rd['status']   = _yn(rd.get('is_functional'))
+
+        # Write each column
+        for col in tc['columns']:
+            val = rd.get(col['key'], '')
+            if val:
+                x0 = col['left']
+                x1 = x0 + col['width']
+                ic(page, x0, y0, x1, y1, str(val), fs=8, align='center')
+
+
+# ── Form 4: special multi-page renderer ──────────────────────────────────────
+def fill_form4_page(page, pg_idx, common, rows):
+    """Render pages 2-4 of form 4 (FireDetectionData)."""
+    tc = FORM_TABLES[4]
+    fp = tc['fire_file_pos']
+    ff = str(common.get('fire_file_number', ''))
+    if ff:
+        ic(page, fp['left'], fp['top'],
+           fp['left'] + fp['width'], fp['top'] + fp['height'], ff)
+
+    if not rows:
+        return
+    r = rows[0]
+
+    if pg_idx == 1:
+        # Page 2: detector table (from detectors_json)
+        detectors = _safe_json(r.get('detectors_json', ''), [])
+        cols = tc['detector_cols']
+        y0_base = tc['detector_start_y']
+        rh      = tc['detector_row_h']
+        for i, det in enumerate(detectors[:tc['detector_max']]):
+            y0 = y0_base + i * rh
+            y1 = y0 + rh
+            d = det if isinstance(det, dict) else {}
+            row_data = {
+                'det_num':      str(i + 1),
+                'det_location': d.get('location', ''),
+                'det_type':     d.get('type', ''),
+                'det_zone':     str(d.get('zone', '')),
+                'det_status':   _yn(d.get('is_functional')),
+            }
+            for col in cols:
+                val = row_data.get(col['key'], '')
+                if val:
+                    ic(page, col['left'], y0, col['left'] + col['width'], y1,
+                                         val, fs=8, align='center')
+
+    elif pg_idx == 2:
+        # Page 3: dialer phones + compliance info
+        phones = _safe_json(r.get('dialer_phones_json', ''), [])
+        cols   = tc['phone_cols']
+        y0_base = tc['phone_start_y']
+        rh      = tc['phone_row_h']
+        for i, ph in enumerate(phones[:tc['phone_max']]):
+            y0 = y0_base + i * rh
+            y1 = y0 + rh
+            d = ph if isinstance(ph, dict) else {'number': str(ph)}
+            row_data = {
+                'ph_num':    str(i + 1),
+                'ph_number': d.get('number', str(ph)),
+                'ph_note':   d.get('note', ''),
+            }
+            for col in cols:
+                val = row_data.get(col['key'], '')
+                if val:
+                    ic(page, col['left'], y0, col['left'] + col['width'], y1,
+                       val, fs=8, align='center')
+        compliance = r.get('compliance_option', '')
+        if compliance:
+            ic(page, 200, 600, 500, 614, f'אפשרות {compliance.upper()}', fs=9)
+        conclusion = r.get('conclusion', '')
+        concl_text = 'תקינה' if conclusion == 'ok' else ('לא תקינה' if conclusion == 'not_ok' else '')
+        if concl_text:
+            ic(page, 200, 630, 500, 643, concl_text, fs=10)
+
+    elif pg_idx == 3:
+        # Page 4: defects list
+        defects = _safe_json(r.get('defects_json', ''), [])
+        cols    = tc['defect_cols']
+        y0_base = tc['defect_start_y']
+        rh      = tc['defect_row_h']
+        for i, defect in enumerate(defects[:tc['defect_max']]):
+            y0 = y0_base + i * rh
+            y1 = y0 + rh
+            desc = defect if isinstance(defect, str) else defect.get('description', str(defect))
+            row_data = {
+                'def_num':  str(i + 1),
+                'def_desc': desc,
+            }
+            for col in cols:
+                val = row_data.get(col['key'], '')
+                if val:
+                    ic(page, col['left'], y0, col['left'] + col['width'], y1,
+                       val, fs=8, align='right' if col['key'] == 'def_desc' else 'center')
+
+
+def fill_form6_page2(page, common):
+    tc = FORM_TABLES[6]
+    fp = tc['fire_file_pos']
+    ff = str(common.get('fire_file_number', ''))
+    if ff:
+        ic(page, fp['left'], fp['top'],
+           fp['left'] + fp['width'], fp['top'] + fp['height'], ff)
+    # Inline paragraph fields (form 6 page 2 is a single declaration page)
+    # "אני החתום מטה ___inspector_name___ מס' היתר ___" — line 1
+    ic(page, 190, 163, 435, 175, common.get('inspector_name', ''), align='right')
+    ic(page,  55, 163, 185, 175, common.get('license_number', ''), align='right')
+    # "בתוקף עד לתאריך ___" (license_expiry) — line 2
+    ic(page,  55, 183, 185, 194, common.get('license_expiry', ''), align='center')
+    # "בתאריך ___" (inspection_date) — line about the inspection
+    ic(page,  55, 202, 185, 213, common.get('inspection_date', ''), align='center')
+    # Tav-teken + expiry
+    ic(page, 190, 222, 380, 233, common.get('tav_teken_number', ''), align='right')
+    ic(page,  55, 222, 185, 233, common.get('tav_teken_expiry', ''), align='center')
+    # Route (מסלול — already on page 1 via _section_gim fn==6, skip duplicate)
+    # Conclusion: mark תקינה or לא תקינה
+    is_ok = common.get('is_functional', True)
+    ic(page, 200, 238, 340, 250, 'תקינה' if is_ok else '', fs=10, align='center')
+    ic(page, 100, 238, 198, 250, '' if is_ok else 'לא תקינה', fs=10, align='center')
+    # Signature area (bottom)
+    ic(page, 310, 488, 530, 500, common.get('inspector_name', ''))
+    ic(page, 100, 488, 295, 500, common.get('inspector_id', ''))
+
+
+def render_form(form_num, data):
+    common = dict(data.get('common', {}))
+    rows   = data.get('rows', [])
+    if form_num in (4, 6, 7) and rows:
+        merged = dict(rows[0])
+        merged.update(common)
+        common = merged
+    pages = FORM_PAGES.get(form_num)
+    if not pages:
+        raise ValueError(f'Unknown form_num: {form_num}')
+    doc = fitz.open()
+    for pg_idx, (pw, ph) in enumerate(pages):
+        page = make_page(doc, form_num, pg_idx, pw, ph)
+        if pg_idx == 0:
+            fill_page1(page, form_num, common)
+        elif form_num == 4:
+            fill_form4_page(page, pg_idx, common, rows)
+        elif form_num == 6:
+            fill_form6_page2(page, common)
+        else:
+            fill_table_page(page, form_num, rows, common)
+    buf = io.BytesIO()
+    doc.save(buf, garbage=4, deflate=True, deflate_images=True,
+             deflate_fonts=True, clean=True)
+    return buf.getvalue()
+
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok', 'version': 'v4',
+                    'forms': list(FORM_PAGES.keys())})
+
+
+@app.route('/render', methods=['POST'])
+def render_endpoint():
+    try:
+        payload  = request.get_json(force=True)
+        form_num = int(payload.get('form_num', 0))
+        data     = payload.get('data', {})
+        if form_num not in FORM_PAGES:
+            return jsonify({'error': f'form_num {form_num} not supported'}), 400
+        pdf_bytes = render_form(form_num, data)
+        pdf_b64   = base64.b64encode(pdf_bytes).decode()
+        raw_name  = data.get('common', {}).get('business_name', 'form')
+        name      = re.sub(r'[^\w\-]', '_', raw_name, flags=re.ASCII)
+        name      = re.sub(r'_+', '_', name).strip('_') or 'form'
+        filename  = f'avuka_form{form_num}_{name}.pdf'
+        return jsonify({'pdf_base64': pdf_b64, 'filename': filename})
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
