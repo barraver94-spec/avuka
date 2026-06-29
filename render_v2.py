@@ -81,7 +81,7 @@ def render_form(form_num, data, blank_pdf=None):
         else:
             _put(page, f["x0"], f["y0"], f["x1"], f["y1"], v, f.get("fs", 9), f.get("align", "center"))
     t = cfg.get("table")
-    if t and rows:
+    if t and rows and t.get("columns") and 0 <= t.get("page", 99) < doc.page_count:
         page = doc[t["page"]]; ry = t["row_y"]
         for i, row in enumerate(rows[:len(ry) - 1]):
             for c in t["columns"]:
