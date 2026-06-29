@@ -23,21 +23,20 @@ import fitz
 BASE = os.path.dirname(os.path.abspath(__file__))
 CAL  = os.path.join(BASE, "calibrations")
 BG   = os.path.join(BASE, "backgrounds")
-FONT = os.path.join(BASE, "fonts", "DejaVuSans.ttf")
-
-_arch = fitz.Archive(); _arch.add(FONT, "DejaVuSans.ttf")
-_CSS  = "@font-face{font-family:heb;src:url(DejaVuSans.ttf);} *{font-family:heb;}"
-
 PORTRAIT  = (595.32, 841.92)
 LANDSCAPE = (841.92, 595.32)
 
 
 def _put(page, x0, y0, x1, y1, text, fs=9, align="center"):
+    # Same approach as the legacy app.py ic(): plain insert_htmlbox with
+    # Arial/sans-serif. PyMuPDF resolves a Hebrew-capable fallback on the
+    # server (proven by the legacy renderer). No custom font archive.
     if text is None or str(text) == "":
         return
-    html = (f'<p dir="rtl" style="font-size:{fs}px;text-align:{align};'
-            f'margin:0;padding:0;line-height:{max(y1-y0,6)}px;">{text}</p>')
-    page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html, css=_CSS, archive=_arch)
+    html = (f'<p dir="rtl" style="font-family: Arial, sans-serif; '
+            f'font-size: {fs}px; font-weight: normal; text-align: {align}; '
+            f'margin: 0; padding: 0; line-height: {max(y1-y0,6)}px;">{text}</p>')
+    page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html)
 
 
 def _open_with_background(form_num, n_pages):
