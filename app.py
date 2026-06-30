@@ -553,5 +553,59 @@ def render_endpoint():
         return jsonify({'error': traceback.format_exc()}), 500
 
 
+@app.route('/merge', methods=['POST'])
+def merge_endpoint():
+    """
+    POST /merge  →  { forms: [{form_num, data: {common, rows}}],
+                      business_name?, date? }
+                 →  { pdf_base64, filename }
+
+    Renders each form individually (using render_form) and merges them into
+    a single PDF.  Forms are sorted by form_num (1→7) regardless of the order
+    in which they arrive, so the caller does not need to pre-sort.
+
+    RTL quality and font rendering are identical to /render — we are simply
+    appending pages from separate PyMuPDF documents with insert_pdf(), which
+    is a lossless page-copy that preserves all embedded fonts and graphics.
+    """
+    try:
+        payload = request.get_json(force=True)
+        forms   = payload.get('forms', [])
+        if not forms:
+            return jsonify({'error': 'No forms provided'}), 400
+
+        # Sort by form_num 1→7 before rendering
+        forms_sorted = sorted(forms, key=lambda x: int(x.get('form_num', 0)))
+
+        merged = fitz.open()
+        for item in forms_sorted:
+            form_num = int(item.get('form_num', 0))
+            data     = item.get('data', {})
+            if form_num not in FORM_PAGES:
+                return jsonify({'error': f'form_num {form_num} not supported'}), 400
+            pdf_bytes = render_form(form_num, data)
+            src = fitz.open('pdf', pdf_bytes)
+            merged.insert_pdf(src)
+            src.close()
+
+        buf = io.BytesIO()
+        merged.save(buf, garbage=4, deflate=True, deflate_images=True,
+                    deflate_fonts=True, clean=True)
+        pdf_b64 = base64.b64encode(buf.getvalue()).decode()
+
+        raw_name = payload.get('business_name',
+                               forms_sorted[0].get('data', {})
+                               .get('common', {}).get('business_name', 'avuka'))
+        date_str = payload.get('date', '')
+        name = re.sub(r'[^\w\-]', '_', raw_name, flags=re.ASCII)
+        name = re.sub(r'_+', '_', name).strip('_') or 'avuka'
+        filename = (f'{name}_אישור_מרוכז_{date_str}.pdf'
+                    if date_str else f'{name}_אישור_מרוכז.pdf')
+
+        return jsonify({'pdf_base64': pdf_b64, 'filename': filename})
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
