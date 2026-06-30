@@ -66,29 +66,64 @@ def render_form(form_num, data, blank_pdf=None):
     n_pages = 1 + max([f.get("page", 0) for f in cfg["fields"]] +
                       [cfg.get("table", {}).get("page", 0)])
     doc = fitz.open(blank_pdf) if blank_pdf else _open_with_background(form_num, n_pages)
+
+    # --- Table pagination ---
+    # Split table rows across as many copies of the appendix page as needed.
+    # capacity per page = number of row slots = len(row_y) - 1
+    tbl = cfg.get("table")
+    table_pages = []   # page indices holding each table chunk, in order
+    chunks = []
+    appendix_page = tbl.get("page") if tbl else None
+    if tbl and rows and tbl.get("columns"):
+        ry = tbl["row_y"]
+        cap = len(ry) - 1
+        tp = tbl.get("page", 0)
+        if cap > 0 and 0 <= tp < doc.page_count:
+            chunks = [rows[i:i + cap] for i in range(0, len(rows), cap)]
+            table_pages = [tp]
+            for _ in range(1, len(chunks)):
+                doc.fullcopy_page(tp)            # clean copy of the appendix page
+                table_pages.append(doc.page_count - 1)
+    total_appendix = max(len(table_pages), 1)
+
+    # --- Fields (repeat appendix-page fields on every overflow page) ---
     for f in cfg["fields"]:
         si = f.get("show_if")
         if si and not common.get(si):
             continue
-        page = doc[f["page"]]
-        v = common.get(f.get("data_key", f["id"]), "")
-        t = f.get("type", "text")
-        if t == "digits":
-            s = str(v); bx = f["boxes_x"]
-            for i in range(len(bx) - 1):
-                if i < len(s):
-                    _put(page, bx[i], f["y0"], bx[i+1], f["y1"], s[i], f.get("fs", 9), "center")
-        elif t == "checkbox":
-            if v:
-                _put(page, f["x0"], f["y0"], f["x1"], f["y1"], "V", f.get("fs", 9), "center")
-        else:
-            _put(page, f["x0"], f["y0"], f["x1"], f["y1"], v, f.get("fs", 9), f.get("align", "center"))
-    t = cfg.get("table")
-    if t and rows and t.get("columns") and 0 <= t.get("page", 99) < doc.page_count:
-        page = doc[t["page"]]; ry = t["row_y"]
-        for i, row in enumerate(rows[:len(ry) - 1]):
-            for c in t["columns"]:
-                _put(page, c["x0"], ry[i], c["x1"], ry[i+1], row.get(c["key"], ""), 8, "center")
+        targets = [f["page"]]
+        if appendix_page is not None and f["page"] == appendix_page and table_pages:
+            targets = list(table_pages)
+        dkey = f.get("data_key", f["id"])
+        ttype = f.get("type", "text")
+        for pos, pidx in enumerate(targets):
+            page = doc[pidx]
+            if dkey == "p2_page_num":
+                v = str(pos + 1)
+            elif dkey == "p2_page_total":
+                v = str(total_appendix)
+            else:
+                v = common.get(dkey, "")
+            if ttype == "digits":
+                s = str(v); bx = f["boxes_x"]
+                for i in range(len(bx) - 1):
+                    if i < len(s):
+                        _put(page, bx[i], f["y0"], bx[i+1], f["y1"], s[i], f.get("fs", 9), "center")
+            elif ttype == "checkbox":
+                if v:
+                    _put(page, f["x0"], f["y0"], f["x1"], f["y1"], "V", f.get("fs", 9), "center")
+            else:
+                _put(page, f["x0"], f["y0"], f["x1"], f["y1"], v, f.get("fs", 9), f.get("align", "center"))
+
+    # --- Table rows ---
+    if chunks:
+        ry = tbl["row_y"]
+        for k, chunk in enumerate(chunks):
+            page = doc[table_pages[k]]
+            for i, row in enumerate(chunk):
+                for c in tbl["columns"]:
+                    _put(page, c["x0"], ry[i], c["x1"], ry[i + 1], row.get(c["key"], ""), 8, "center")
+
     buf = io.BytesIO()
     doc.save(buf, garbage=4, deflate=True)
     return buf.getvalue()
