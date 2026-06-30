@@ -67,6 +67,9 @@ def render_form(form_num, data, blank_pdf=None):
                       [cfg.get("table", {}).get("page", 0)])
     doc = fitz.open(blank_pdf) if blank_pdf else _open_with_background(form_num, n_pages)
     for f in cfg["fields"]:
+        si = f.get("show_if")
+        if si and not common.get(si):
+            continue
         page = doc[f["page"]]
         v = common.get(f.get("data_key", f["id"]), "")
         t = f.get("type", "text")
