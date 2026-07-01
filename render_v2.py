@@ -49,8 +49,11 @@ def _put_fast(page, x0, y0, x1, y1, text, fs=8, align="center"):
         return
     s = get_display(str(text))
     voff = max(((y1 - y0) - fs) / 2.0 - 0.5, 0)
+    # Use the page-registered font (see insert_font in render_form). Passing
+    # fontfile= on every call re-embeds the 757KB TTF thousands of times and
+    # crashes the worker on large tables — fontname-only avoids that.
     page.insert_textbox(fitz.Rect(x0, y0 + voff, x1, y1 + 2), s, fontsize=fs,
-                        fontname="djv", fontfile=FONT, align=_ALIGN.get(align, 1))
+                        fontname="djv", align=_ALIGN.get(align, 1))
 
 
 def _open_with_background(form_num, n_pages):
