@@ -19,12 +19,15 @@ all 7 forms are calibrated.
 """
 import os, io, json, glob
 import fitz
+from bidi.algorithm import get_display
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 CAL  = os.path.join(BASE, "calibrations")
 BG   = os.path.join(BASE, "backgrounds")
 PORTRAIT  = (595.32, 841.92)
 LANDSCAPE = (841.92, 595.32)
+FONT = os.path.join(BASE, "fonts", "DejaVuSans.ttf")
+_ALIGN = {"center": 1, "left": 0, "right": 2}
 
 
 def _put(page, x0, y0, x1, y1, text, fs=9, align="center"):
@@ -37,6 +40,17 @@ def _put(page, x0, y0, x1, y1, text, fs=9, align="center"):
             f'font-size: {fs}px; font-weight: normal; text-align: {align}; '
             f'margin: 0; padding: 0; line-height: {max(y1-y0,6)}px;">{text}</p>')
     page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html)
+
+
+def _put_fast(page, x0, y0, x1, y1, text, fs=8, align="center"):
+    # Fast Hebrew-aware cell text via insert_textbox (much faster than
+    # insert_htmlbox). python-bidi reorders logical->visual for correct RTL.
+    if text is None or str(text) == "":
+        return
+    s = get_display(str(text))
+    voff = max(((y1 - y0) - fs) / 2.0 - 0.5, 0)
+    page.insert_textbox(fitz.Rect(x0, y0 + voff, x1, y1 + 2), s, fontsize=fs,
+                        fontname="djv", fontfile=FONT, align=_ALIGN.get(align, 1))
 
 
 def _open_with_background(form_num, n_pages):
@@ -86,6 +100,10 @@ def render_form(form_num, data, blank_pdf=None):
                 table_pages.append(doc.page_count - 1)
     total_appendix = max(len(table_pages), 1)
 
+    # Register the Hebrew font on each appendix page for the fast table path
+    for _pidx in table_pages:
+        doc[_pidx].insert_font(fontname="djv", fontfile=FONT)
+
     # --- Fields (repeat appendix-page fields on every overflow page) ---
     for f in cfg["fields"]:
         si = f.get("show_if")
@@ -122,7 +140,7 @@ def render_form(form_num, data, blank_pdf=None):
             page = doc[table_pages[k]]
             for i, row in enumerate(chunk):
                 for c in tbl["columns"]:
-                    _put(page, c["x0"], ry[i], c["x1"], ry[i + 1], row.get(c["key"], ""), 8, "center")
+                    _put_fast(page, c["x0"], ry[i], c["x1"], ry[i + 1], row.get(c["key"], ""), 8, "center")
 
     buf = io.BytesIO()
     doc.save(buf, garbage=4, deflate=True)
