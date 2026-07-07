@@ -42,90 +42,18 @@ def _put(page, x0, y0, x1, y1, text, fs=9, align="center"):
     page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html)
 
 
-# Module-level Font for width measurement only (not embedded per call).
-_DJV = fitz.Font(fontfile=FONT)
-
-
-def _wrap_rtl(text, fs, maxw):
-    """Split logical text into lines that fit maxw, then bidi-reorder each
-    line separately. Wrapping must happen in LOGICAL order — wrapping the
-    visual string would put the end of the sentence on the first line."""
-    words = str(text).split()
-    lines, cur = [], ""
-    for w in words:
-        t = (cur + " " + w).strip()
-        if not cur or _DJV.text_length(get_display(t), fontsize=fs) <= maxw:
-            cur = t
-        else:
-            lines.append(cur)
-            cur = w
-    if cur:
-        lines.append(cur)
-    return [get_display(l) for l in lines]
-
-
 def _put_fast(page, x0, y0, x1, y1, text, fs=8, align="center"):
     # Fast Hebrew-aware cell text via insert_textbox (much faster than
     # insert_htmlbox). python-bidi reorders logical->visual for correct RTL.
-    #
-    # OVERFLOW FIX (06/07/2026): insert_textbox silently writes NOTHING when
-    # the text is wider than the rect — long serials/locations/notes were
-    # dropped from printed forms while present in the DB. Now: keep the
-    # original path when the text fits at the requested size; otherwise
-    # shrink the font, and if a single line still can't fit, word-wrap
-    # (logical-order) onto up to the cell height. A value is never dropped.
     if text is None or str(text) == "":
         return
-    raw = str(text)
-    s = get_display(raw)
-    w_cell = (x1 - x0) - 1.2
-    h_cell = y1 - y0
-
-    if _DJV.text_length(s, fontsize=fs) <= w_cell:
-        # Fits at requested size — identical to the original behaviour.
-        voff = max(((y1 - y0) - fs) / 2.0 - 0.5, 0)
-        # Use the page-registered font (see insert_font in render_form).
-        # Passing fontfile= on every call re-embeds the 757KB TTF thousands
-        # of times and crashes the worker on large tables.
-        page.insert_textbox(fitz.Rect(x0, y0 + voff, x1, y1 + 2), s, fontsize=fs,
-                            fontname="djv", align=_ALIGN.get(align, 1))
-        return
-
-    # 1) Shrink a single line down to 5pt.
-    f = fs
-    while f > 5 and _DJV.text_length(s, fontsize=f) > w_cell:
-        f -= 0.5
-    if _DJV.text_length(s, fontsize=f) <= w_cell:
-        lines, use = [s], f
-    else:
-        # 2) Word-wrap in logical order, largest size whose lines fit
-        #    both the width and the cell height.
-        lines, use = None, None
-        for cand in (5.5, 5.0, 4.5, 4.0):
-            ls = _wrap_rtl(raw, cand, w_cell)
-            if (all(_DJV.text_length(l, fontsize=cand) <= w_cell for l in ls)
-                    and len(ls) * cand * 1.22 <= h_cell + 1.0):
-                lines, use = ls, cand
-                break
-        if lines is None:
-            # 3) Last resort: 4pt, keep as many lines as fit — a squeezed
-            #    value beats a silently missing one.
-            use = 4.0
-            max_lines = max(int((h_cell + 1.0) // (use * 1.22)), 1)
-            lines = _wrap_rtl(raw, use, w_cell)[:max_lines]
-
-    lh = use * 1.22
-    ty = y0 + max((h_cell - lh * len(lines)) / 2.0, 0) + use
-    for l in lines:
-        lw = _DJV.text_length(l, fontsize=use)
-        if align == "right":
-            tx = max(x1 - 0.6 - lw, x0 + 0.6)
-        elif align == "left":
-            tx = x0 + 0.6
-        else:
-            tx = x0 + max((x1 - x0 - lw) / 2.0, 0.6)
-        page.insert_text((tx, ty), l, fontsize=use, fontname="djv")
-        ty += lh
+    s = get_display(str(text))
+    voff = max(((y1 - y0) - fs) / 2.0 - 0.5, 0)
+    # Use the page-registered font (see insert_font in render_form). Passing
+    # fontfile= on every call re-embeds the 757KB TTF thousands of times and
+    # crashes the worker on large tables — fontname-only avoids that.
+    page.insert_textbox(fitz.Rect(x0, y0 + voff, x1, y1 + 2), s, fontsize=fs,
+                        fontname="djv", align=_ALIGN.get(align, 1))
 
 
 def _open_with_background(form_num, n_pages):
