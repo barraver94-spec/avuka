@@ -547,6 +547,41 @@ def health():
                     'forms': list(FORM_PAGES.keys())})
 
 
+@app.route('/page-image', methods=['POST'])
+def page_image_endpoint():
+    """
+    המרת עמוד PDF לתמונת JPEG — משמש את ייבוא הסריקות ב-CRM:
+    יישור סריקות מסובבות + רזולוציה גבוהה לפני שליחה ל-Claude.
+    קלט:  { pdf_url | pdf_base64, page (1-based, ברירת מחדל 1),
+            rotate (0/90/180/270), dpi (ברירת מחדל 200, מקס 300) }
+    פלט:  { jpg_base64, width, height, page_count }
+    """
+    try:
+        payload = request.get_json(force=True)
+        page_no = int(payload.get('page', 1))
+        rotate = int(payload.get('rotate', 0)) % 360
+        dpi = min(max(int(payload.get('dpi', 200)), 72), 300)
+        if payload.get('pdf_base64'):
+            data = base64.b64decode(payload['pdf_base64'])
+        else:
+            import urllib.request
+            req = urllib.request.Request(payload['pdf_url'],
+                                         headers={'User-Agent': 'avuka-renderer'})
+            data = urllib.request.urlopen(req, timeout=60).read()
+        doc = fitz.open('pdf', data)
+        idx = min(max(page_no - 1, 0), doc.page_count - 1)
+        m = fitz.Matrix(dpi / 72.0, dpi / 72.0)
+        if rotate:
+            m.prerotate(rotate)
+        pix = doc[idx].get_pixmap(matrix=m)
+        jpg = pix.tobytes('jpeg', jpg_quality=85)
+        return jsonify({'jpg_base64': base64.b64encode(jpg).decode(),
+                        'width': pix.width, 'height': pix.height,
+                        'page_count': doc.page_count})
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
+
+
 @app.route('/render', methods=['POST'])
 def render_endpoint():
     try:
