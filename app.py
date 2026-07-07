@@ -495,6 +495,19 @@ def fill_form6_page2(page, common):
     ic(page, *FORM6_P2['inspector_id_sig'],   common.get('inspector_id', ''))
 
 
+def _maybe_append_checklist(form_num, data, pdf_bytes):
+    # צ'קליסט מתזים (נלווה לטופס 7) — מצורף אחרי עמודי הטופס אם נשלח מה-CRM.
+    # כשל בצ'קליסט לעולם לא מפיל את הפקת הטופס עצמו.
+    try:
+        chk = (data or {}).get('checklist')
+        if int(form_num) == 7 and chk:
+            import checklist_render
+            return checklist_render.append_checklist(pdf_bytes, chk)
+    except Exception as e:
+        print('checklist append failed:', e)
+    return pdf_bytes
+
+
 def render_form(form_num, data):
     # Hybrid routing: if a per-form calibration exists (new generic system),
     # delegate to render_v2. Otherwise fall back to the legacy logic below.
@@ -543,6 +556,7 @@ def render_endpoint():
         if form_num not in FORM_PAGES:
             return jsonify({'error': f'form_num {form_num} not supported'}), 400
         pdf_bytes = render_form(form_num, data)
+        pdf_bytes = _maybe_append_checklist(form_num, data, pdf_bytes)
         pdf_b64   = base64.b64encode(pdf_bytes).decode()
         raw_name  = data.get('common', {}).get('business_name', 'form')
         name      = re.sub(r'[^\w\-]', '_', raw_name, flags=re.ASCII)
@@ -584,6 +598,7 @@ def merge_endpoint():
             if form_num not in FORM_PAGES:
                 return jsonify({'error': f'form_num {form_num} not supported'}), 400
             pdf_bytes = render_form(form_num, data)
+            pdf_bytes = _maybe_append_checklist(form_num, data, pdf_bytes)
             src = fitz.open('pdf', pdf_bytes)
             merged.insert_pdf(src)
             src.close()
