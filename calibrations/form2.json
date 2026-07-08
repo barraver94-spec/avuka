@@ -1,447 +1,449 @@
 {
- "form": 2,
- "fields": [
-  {
-   "id": "date",
-   "page": 0,
-   "type": "text",
-   "x0": 56.8,
-   "y0": 177.4,
-   "x1": 128.7,
-   "y1": 189.4,
-   "fs": 9,
-   "align": "center",
-   "data_key": "date"
-  },
-  {
-   "id": "business_name",
-   "page": 0,
-   "type": "text",
-   "x0": 298,
-   "y0": 276.3,
-   "x1": 411.6,
-   "y1": 290.9,
-   "fs": 9,
-   "align": "center",
-   "data_key": "business_name"
-  },
-  {
-   "id": "business_type",
-   "page": 0,
-   "type": "text",
-   "x0": 170.4,
-   "y0": 276.3,
-   "x1": 298,
-   "y1": 290.9,
-   "fs": 9,
-   "align": "center",
-   "data_key": "business_type"
-  },
-  {
-   "id": "city",
-   "page": 0,
-   "type": "text",
-   "x0": 461.1,
-   "y0": 321.6,
-   "x1": 565.7,
-   "y1": 336.4,
-   "fs": 9,
-   "align": "center",
-   "data_key": "city"
-  },
-  {
-   "id": "street",
-   "page": 0,
-   "type": "text",
-   "x0": 280.6,
-   "y0": 321.6,
-   "x1": 460.7,
-   "y1": 336.4,
-   "fs": 9,
-   "align": "center",
-   "data_key": "street"
-  },
-  {
-   "id": "house",
-   "page": 0,
-   "type": "text",
-   "x0": 234.3,
-   "y0": 321.6,
-   "x1": 280.1,
-   "y1": 336.4,
-   "fs": 9,
-   "align": "center",
-   "data_key": "house_number"
-  },
-  {
-   "id": "zip",
-   "page": 0,
-   "type": "text",
-   "x0": 143.8,
-   "y0": 321.6,
-   "x1": 233.8,
-   "y1": 336.4,
-   "fs": 9,
-   "align": "center",
-   "data_key": "zip"
-  },
-  {
-   "id": "po_box",
-   "page": 0,
-   "type": "text",
-   "x0": 43.2,
-   "y0": 321.6,
-   "x1": 143.8,
-   "y1": 336.4,
-   "fs": 9,
-   "align": "center",
-   "data_key": "po_box"
-  },
-  {
-   "id": "contact_name",
-   "page": 0,
-   "type": "text",
-   "x0": 418.8,
-   "y0": 367.1,
-   "x1": 565.7,
-   "y1": 381.9,
-   "fs": 9,
-   "align": "center",
-   "data_key": "contact_name"
-  },
-  {
-   "id": "contact_role",
-   "page": 0,
-   "type": "text",
-   "x0": 362.1,
-   "y0": 367.1,
-   "x1": 418.3,
-   "y1": 381.9,
-   "fs": 9,
-   "align": "center",
-   "data_key": "contact_role"
-  },
-  {
-   "id": "contact_phone",
-   "page": 0,
-   "type": "text",
-   "x0": 234.3,
-   "y0": 367.1,
-   "x1": 361.6,
-   "y1": 381.9,
-   "fs": 9,
-   "align": "center",
-   "data_key": "contact_phone"
-  },
-  {
-   "id": "contact_email",
-   "page": 0,
-   "type": "text",
-   "x0": 43.2,
-   "y0": 367.1,
-   "x1": 233.8,
-   "y1": 381.9,
-   "fs": 8,
-   "align": "left",
-   "data_key": "contact_email"
-  },
-  {
-   "id": "decl_name",
-   "page": 0,
-   "type": "text",
-   "x0": 346.9,
-   "y0": 405,
-   "x1": 431.9,
-   "y1": 418,
-   "fs": 9,
-   "align": "center",
-   "data_key": "inspector_name"
-  },
-  {
-   "id": "decl_tz",
-   "page": 0,
-   "type": "text",
-   "x0": 224.3,
-   "y0": 405.7,
-   "x1": 322.4,
-   "y1": 418.7,
-   "fs": 9,
-   "align": "center",
-   "data_key": "inspector_id_number"
-  },
-  {
-   "id": "decl_date",
-   "page": 0,
-   "type": "text",
-   "x0": 410.7,
-   "y0": 453.2,
-   "x1": 489.3,
-   "y1": 466.2,
-   "fs": 9,
-   "align": "center",
-   "data_key": "date"
-  },
-  {
-   "id": "inspector_sig",
-   "page": 0,
-   "type": "text",
-   "x0": 372.8,
-   "y0": 636.2,
-   "x1": 477.4,
-   "y1": 649.2,
-   "fs": 9,
-   "align": "center",
-   "data_key": "inspector_name"
-  },
-  {
-   "id": "company_name",
-   "page": 0,
-   "type": "text",
-   "x0": 386,
-   "y0": 675.7,
-   "x1": 497,
-   "y1": 688.7,
-   "fs": 9,
-   "align": "center",
-   "data_key": "company_name"
-  },
-  {
-   "id": "company_sig",
-   "page": 0,
-   "type": "text",
-   "x0": 160.5,
-   "y0": 674.2,
-   "x1": 265.8,
-   "y1": 687.2,
-   "fs": 9,
-   "align": "center",
-   "data_key": "company_sig"
-  },
-  {
-   "id": "vat",
-   "page": 0,
-   "type": "digits",
-   "boxes_x": [
-    43.2,
-    55.7,
-    68.5,
-    81.2,
-    93.9,
-    106.6,
-    119.3,
-    132,
-    144.8,
-    157.6,
-    170.2
-   ],
-   "y0": 276.3,
-   "y1": 290.9,
-   "fs": 9,
-   "data_key": "vat_number"
-  },
-  {
-   "id": "fire_file",
-   "page": 0,
-   "type": "digits",
-   "boxes_x": [
-    411.6,
-    428.7,
-    445.7,
-    462.9,
-    480.1,
-    497.3,
-    514.5,
-    531.6,
-    548.8,
-    566
-   ],
-   "y0": 276.3,
-   "y1": 290.9,
-   "fs": 9,
-   "data_key": "fire_file_number"
-  },
-  {
-   "id": "p2_fire_file",
-   "page": 1,
-   "type": "text",
-   "x0": 424.4,
-   "y0": 91.7,
-   "x1": 558.4,
-   "y1": 104.7,
-   "fs": 9,
-   "align": "center",
-   "data_key": "fire_file_number"
-  },
-  {
-   "id": "p2_customer_name",
-   "page": 1,
-   "type": "text",
-   "x0": 494.5,
-   "y0": 140,
-   "x1": 677.5,
-   "y1": 153,
-   "fs": 9,
-   "align": "center",
-   "data_key": "business_name"
-  },
-  {
-   "id": "p2_page_num",
-   "page": 1,
-   "type": "text",
-   "x0": 351,
-   "y0": 140,
-   "x1": 443,
-   "y1": 153,
-   "fs": 9,
-   "align": "center",
-   "data_key": "p2_page_num"
-  },
-  {
-   "id": "p2_page_total",
-   "page": 1,
-   "type": "text",
-   "x0": 230,
-   "y0": 140,
-   "x1": 315,
-   "y1": 153,
-   "fs": 9,
-   "align": "center",
-   "data_key": "p2_page_total"
-  },
-  {
-   "id": "p2_inspector_name",
-   "page": 1,
-   "type": "text",
-   "x0": 610.2,
-   "y0": 497.7,
-   "x1": 714.9,
-   "y1": 510.7,
-   "fs": 9,
-   "align": "center",
-   "data_key": "inspector_name"
-  },
-  {
-   "id": "p2_executor_sig",
-   "page": 1,
-   "type": "text",
-   "x0": 401.7,
-   "y0": 497,
-   "x1": 534.6,
-   "y1": 510,
-   "fs": 9,
-   "align": "center",
-   "data_key": "inspector_name"
-  },
-  {
-   "id": "p2_company_stamp",
-   "page": 1,
-   "type": "text",
-   "x0": 218,
-   "y0": 494.7,
-   "x1": 326.6,
-   "y1": 507.7,
-   "fs": 9,
-   "align": "center",
-   "data_key": "p2_company_stamp"
-  },
-  {
-   "id": "p2_date",
-   "page": 1,
-   "type": "text",
-   "x0": 83,
-   "y0": 494,
-   "x1": 179.7,
-   "y1": 507,
-   "fs": 9,
-   "align": "center",
-   "data_key": "date"
-  }
- ],
- "table": {
-  "page": 1,
-  "row_y": [
-   215.7,
-   230.6,
-   245.6,
-   260.4,
-   275.5,
-   290.5,
-   305.4,
-   320.4,
-   335.2,
-   350.2,
-   364.3,
-   378.3,
-   392.4,
-   406.4,
-   420.5,
-   434.5,
-   448.5,
-   462.7,
-   476.7,
-   490.8
+  "form": 2,
+  "fields": [
+    {
+      "id": "date",
+      "page": 0,
+      "type": "text",
+      "x0": 56.8,
+      "y0": 177.4,
+      "x1": 128.7,
+      "y1": 189.4,
+      "fs": 9,
+      "align": "center",
+      "data_key": "date"
+    },
+    {
+      "id": "business_name",
+      "page": 0,
+      "type": "text",
+      "x0": 298,
+      "y0": 276.3,
+      "x1": 411.6,
+      "y1": 290.9,
+      "fs": 9,
+      "align": "center",
+      "data_key": "business_name"
+    },
+    {
+      "id": "business_type",
+      "page": 0,
+      "type": "text",
+      "x0": 170.4,
+      "y0": 276.3,
+      "x1": 298,
+      "y1": 290.9,
+      "fs": 9,
+      "align": "center",
+      "data_key": "business_type"
+    },
+    {
+      "id": "city",
+      "page": 0,
+      "type": "text",
+      "x0": 461.1,
+      "y0": 321.6,
+      "x1": 565.7,
+      "y1": 336.4,
+      "fs": 9,
+      "align": "center",
+      "data_key": "city"
+    },
+    {
+      "id": "street",
+      "page": 0,
+      "type": "text",
+      "x0": 280.6,
+      "y0": 321.6,
+      "x1": 460.7,
+      "y1": 336.4,
+      "fs": 9,
+      "align": "center",
+      "data_key": "street"
+    },
+    {
+      "id": "house",
+      "page": 0,
+      "type": "text",
+      "x0": 234.3,
+      "y0": 321.6,
+      "x1": 280.1,
+      "y1": 336.4,
+      "fs": 9,
+      "align": "center",
+      "data_key": "house_number"
+    },
+    {
+      "id": "zip",
+      "page": 0,
+      "type": "text",
+      "x0": 143.8,
+      "y0": 321.6,
+      "x1": 233.8,
+      "y1": 336.4,
+      "fs": 9,
+      "align": "center",
+      "data_key": "zip"
+    },
+    {
+      "id": "po_box",
+      "page": 0,
+      "type": "text",
+      "x0": 43.2,
+      "y0": 321.6,
+      "x1": 143.8,
+      "y1": 336.4,
+      "fs": 9,
+      "align": "center",
+      "data_key": "po_box"
+    },
+    {
+      "id": "contact_name",
+      "page": 0,
+      "type": "text",
+      "x0": 418.8,
+      "y0": 367.1,
+      "x1": 565.7,
+      "y1": 381.9,
+      "fs": 9,
+      "align": "center",
+      "data_key": "contact_name"
+    },
+    {
+      "id": "contact_role",
+      "page": 0,
+      "type": "text",
+      "x0": 362.1,
+      "y0": 367.1,
+      "x1": 418.3,
+      "y1": 381.9,
+      "fs": 9,
+      "align": "center",
+      "data_key": "contact_role"
+    },
+    {
+      "id": "contact_phone",
+      "page": 0,
+      "type": "text",
+      "x0": 234.3,
+      "y0": 367.1,
+      "x1": 361.6,
+      "y1": 381.9,
+      "fs": 9,
+      "align": "center",
+      "data_key": "contact_phone"
+    },
+    {
+      "id": "contact_email",
+      "page": 0,
+      "type": "text",
+      "x0": 43.2,
+      "y0": 367.1,
+      "x1": 233.8,
+      "y1": 381.9,
+      "fs": 8,
+      "align": "left",
+      "data_key": "contact_email"
+    },
+    {
+      "id": "decl_name",
+      "page": 0,
+      "type": "text",
+      "x0": 346.9,
+      "y0": 405,
+      "x1": 431.9,
+      "y1": 418,
+      "fs": 9,
+      "align": "center",
+      "data_key": "inspector_name"
+    },
+    {
+      "id": "decl_tz",
+      "page": 0,
+      "type": "text",
+      "x0": 224.3,
+      "y0": 405.7,
+      "x1": 322.4,
+      "y1": 418.7,
+      "fs": 9,
+      "align": "center",
+      "data_key": "inspector_id_number"
+    },
+    {
+      "id": "decl_date",
+      "page": 0,
+      "type": "text",
+      "x0": 410.7,
+      "y0": 453.2,
+      "x1": 489.3,
+      "y1": 466.2,
+      "fs": 9,
+      "align": "center",
+      "data_key": "date"
+    },
+    {
+      "id": "inspector_sig",
+      "page": 0,
+      "type": "text",
+      "x0": 372.8,
+      "y0": 636.2,
+      "x1": 477.4,
+      "y1": 649.2,
+      "fs": 9,
+      "align": "center",
+      "data_key": "inspector_name"
+    },
+    {
+      "id": "company_name",
+      "page": 0,
+      "type": "text",
+      "x0": 386,
+      "y0": 675.7,
+      "x1": 497,
+      "y1": 688.7,
+      "fs": 9,
+      "align": "center",
+      "data_key": "company_name"
+    },
+    {
+      "id": "company_sig",
+      "page": 0,
+      "type": "image",
+      "x0": 160.5,
+      "y0": 674.2,
+      "x1": 265.8,
+      "y1": 687.2,
+      "fs": 9,
+      "align": "center",
+      "data_key": "company_stamp",
+      "pad_y": 24
+    },
+    {
+      "id": "vat",
+      "page": 0,
+      "type": "digits",
+      "boxes_x": [
+        43.2,
+        55.7,
+        68.5,
+        81.2,
+        93.9,
+        106.6,
+        119.3,
+        132,
+        144.8,
+        157.6,
+        170.2
+      ],
+      "y0": 276.3,
+      "y1": 290.9,
+      "fs": 9,
+      "data_key": "vat_number"
+    },
+    {
+      "id": "fire_file",
+      "page": 0,
+      "type": "digits",
+      "boxes_x": [
+        411.6,
+        428.7,
+        445.7,
+        462.9,
+        480.1,
+        497.3,
+        514.5,
+        531.6,
+        548.8,
+        566
+      ],
+      "y0": 276.3,
+      "y1": 290.9,
+      "fs": 9,
+      "data_key": "fire_file_number"
+    },
+    {
+      "id": "p2_fire_file",
+      "page": 1,
+      "type": "text",
+      "x0": 424.4,
+      "y0": 91.7,
+      "x1": 558.4,
+      "y1": 104.7,
+      "fs": 9,
+      "align": "center",
+      "data_key": "fire_file_number"
+    },
+    {
+      "id": "p2_customer_name",
+      "page": 1,
+      "type": "text",
+      "x0": 494.5,
+      "y0": 140,
+      "x1": 677.5,
+      "y1": 153,
+      "fs": 9,
+      "align": "center",
+      "data_key": "business_name"
+    },
+    {
+      "id": "p2_page_num",
+      "page": 1,
+      "type": "text",
+      "x0": 351,
+      "y0": 140,
+      "x1": 443,
+      "y1": 153,
+      "fs": 9,
+      "align": "center",
+      "data_key": "p2_page_num"
+    },
+    {
+      "id": "p2_page_total",
+      "page": 1,
+      "type": "text",
+      "x0": 230,
+      "y0": 140,
+      "x1": 315,
+      "y1": 153,
+      "fs": 9,
+      "align": "center",
+      "data_key": "p2_page_total"
+    },
+    {
+      "id": "p2_inspector_name",
+      "page": 1,
+      "type": "text",
+      "x0": 610.2,
+      "y0": 497.7,
+      "x1": 714.9,
+      "y1": 510.7,
+      "fs": 9,
+      "align": "center",
+      "data_key": "inspector_name"
+    },
+    {
+      "id": "p2_executor_sig",
+      "page": 1,
+      "type": "text",
+      "x0": 401.7,
+      "y0": 497,
+      "x1": 534.6,
+      "y1": 510,
+      "fs": 9,
+      "align": "center",
+      "data_key": "inspector_name"
+    },
+    {
+      "id": "p2_company_stamp",
+      "page": 1,
+      "type": "image",
+      "x0": 218,
+      "y0": 494.7,
+      "x1": 326.6,
+      "y1": 507.7,
+      "fs": 9,
+      "align": "center",
+      "data_key": "company_stamp",
+      "pad_y": 24
+    },
+    {
+      "id": "p2_date",
+      "page": 1,
+      "type": "text",
+      "x0": 83,
+      "y0": 494,
+      "x1": 179.7,
+      "y1": 507,
+      "fs": 9,
+      "align": "center",
+      "data_key": "date"
+    }
   ],
-  "columns": [
-   {
-    "key": "num",
-    "x0": 782.3,
-    "x1": 819.2
-   },
-   {
-    "key": "id",
-    "x0": 726.6,
-    "x1": 781.8
-   },
-   {
-    "key": "location",
-    "x0": 602,
-    "x1": 726.1
-   },
-   {
-    "key": "type",
-    "x0": 531.2,
-    "x1": 601.5
-   },
-   {
-    "key": "size_kg",
-    "x0": 478.4,
-    "x1": 530.7
-   },
-   {
-    "key": "manufacturer",
-    "x0": 390.2,
-    "x1": 477.9
-   },
-   {
-    "key": "next_major",
-    "x0": 320.8,
-    "x1": 389.7
-   },
-   {
-    "key": "next_pressure",
-    "x0": 237.4,
-    "x1": 320.8
-   },
-   {
-    "key": "ok",
-    "x0": 206.4,
-    "x1": 236.9
-   },
-   {
-    "key": "not_ok",
-    "x0": 173.5,
-    "x1": 205.9
-   },
-   {
-    "key": "insp_type",
-    "x0": 92.8,
-    "x1": 173.1
-   },
-   {
-    "key": "notes",
-    "x0": 25,
-    "x1": 92.3
-   }
-  ]
- }
+  "table": {
+    "page": 1,
+    "row_y": [
+      215.7,
+      230.6,
+      245.6,
+      260.4,
+      275.5,
+      290.5,
+      305.4,
+      320.4,
+      335.2,
+      350.2,
+      364.3,
+      378.3,
+      392.4,
+      406.4,
+      420.5,
+      434.5,
+      448.5,
+      462.7,
+      476.7,
+      490.8
+    ],
+    "columns": [
+      {
+        "key": "num",
+        "x0": 782.3,
+        "x1": 819.2
+      },
+      {
+        "key": "id",
+        "x0": 726.6,
+        "x1": 781.8
+      },
+      {
+        "key": "location",
+        "x0": 602,
+        "x1": 726.1
+      },
+      {
+        "key": "type",
+        "x0": 531.2,
+        "x1": 601.5
+      },
+      {
+        "key": "size_kg",
+        "x0": 478.4,
+        "x1": 530.7
+      },
+      {
+        "key": "manufacturer",
+        "x0": 390.2,
+        "x1": 477.9
+      },
+      {
+        "key": "next_major",
+        "x0": 320.8,
+        "x1": 389.7
+      },
+      {
+        "key": "next_pressure",
+        "x0": 237.4,
+        "x1": 320.8
+      },
+      {
+        "key": "ok",
+        "x0": 206.4,
+        "x1": 236.9
+      },
+      {
+        "key": "not_ok",
+        "x0": 173.5,
+        "x1": 205.9
+      },
+      {
+        "key": "insp_type",
+        "x0": 92.8,
+        "x1": 173.1
+      },
+      {
+        "key": "notes",
+        "x0": 25,
+        "x1": 92.3
+      }
+    ]
+  }
 }

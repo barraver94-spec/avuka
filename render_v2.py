@@ -17,7 +17,7 @@ the current app.py uses).
 NOT yet wired to production. This is the target for switching app.py over once
 all 7 forms are calibrated.
 """
-import os, io, json, glob
+import os, io, json, glob, base64
 import fitz
 from bidi.algorithm import get_display
 
@@ -128,6 +128,22 @@ def _put_fast(page, x0, y0, x1, y1, text, fs=8, align="center"):
         ty += lh
 
 
+def _put_image(page, x0, y0, x1, y1, value, pad_y=0):
+    """מציב חתימה/חותמת מ-dataURL (או base64 גולמי) בתוך תיבה, בשמירת יחס.
+    כשל בפענוח לעולם לא מפיל את הרינדור — פשוט מדלג."""
+    if not value or not isinstance(value, str):
+        return
+    try:
+        b64 = value.split(",", 1)[1] if value.startswith("data:") else value
+        raw = base64.b64decode(b64)
+        # התיבה בכיול היא שורת טקסט דקה; מרחיבים כלפי מעלה כדי לתת גובה לחתימה.
+        top = y0 - pad_y if pad_y else min(y0, y1) - 14
+        rect = fitz.Rect(min(x0, x1), top, max(x0, x1), max(y0, y1))
+        page.insert_image(rect, stream=raw, keep_proportion=True, overlay=True)
+    except Exception as e:
+        print("signature image skipped:", str(e)[:120])
+
+
 def _open_with_background(form_num, n_pages):
     """Return a doc with backgrounds. Prefer a vector blank PDF; else PNGs."""
     blank = os.path.join(BASE, "blanks", f"form{form_num}.pdf")
@@ -205,6 +221,10 @@ def render_form(form_num, data, blank_pdf=None):
             elif ttype == "checkbox":
                 if v:
                     _put(page, f["x0"], f["y0"], f["x1"], f["y1"], "V", f.get("fs", 9), "center")
+            elif ttype == "image":
+                # חתימות/חותמת: ערך = data:image/...;base64,XXX (dataURL) או base64 גולמי.
+                # מוצב בתוך התיבה בשמירת יחס. תיבה גבוהה מהשורה — pad_y מרחיב כלפי מעלה.
+                _put_image(page, f["x0"], f["y0"], f["x1"], f["y1"], v, f.get("pad_y", 0))
             else:
                 _put(page, f["x0"], f["y0"], f["x1"], f["y1"], v, f.get("fs", 9), f.get("align", "center"))
 
