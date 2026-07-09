@@ -24,7 +24,7 @@ SINGLE SOURCE OF TRUTH:
   stays in this file; only the numbers live in the config.
 ──────────────────────────────────────────────────────────────────────────────
 """
-import os, io, base64, traceback, re, json
+import os, io, base64, traceback, re, json, gc, html as _html
 import fitz
 from flask import Flask, request, jsonify
 
@@ -32,6 +32,27 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BG_DIR   = os.path.join(BASE_DIR, 'backgrounds')
 CFG_PATH = os.path.join(BASE_DIR, 'forms_config.json')
+
+# פונטים מוטמעים ל-insert_htmlbox — זהה ל-render_v2.py:
+# Heebo לעברית (Arial לא קיימת בשרת של Render), DejaVu כגיבוי לסימנים חסרים (✓).
+HTML_ARCH = fitz.Archive(os.path.join(BASE_DIR, 'fonts'))
+HTML_CSS = ('@font-face {font-family: hebmain; src: url(heebo.ttf);}'
+            '@font-face {font-family: hebmain; src: url(heebo-bold.ttf); font-weight: bold;}'
+            '@font-face {font-family: hebfall; src: url(DejaVuSans.ttf);}')
+_FONT_STACK = 'hebmain, hebfall, sans-serif'
+
+_HEB_RE = re.compile(r'[\u0590-\u05FF]')
+_LTR_RE = re.compile(r'[A-Za-z0-9]')
+
+
+def _text_dir(s):
+    """ערך עם עברית → rtl. ערך לועזי/מספרי בלבד (טלפון, מייל, מס' רישיון) → ltr,
+    אחרת מקפים וסימני פיסוק מתהפכים בהקשר rtl. ניטרלי → rtl."""
+    if _HEB_RE.search(s):
+        return 'rtl'
+    if _LTR_RE.search(s):
+        return 'ltr'
+    return 'rtl'
 
 # ── Load coordinate config (single source of truth) ──────────────────────────
 with open(CFG_PATH, encoding='utf-8') as _f:
@@ -48,15 +69,15 @@ def ic(page, x0, y0, x1, y1, text, fs=9, align="center"):
     """Insert Hebrew RTL text into rect (x0,y0,x1,y1) in pt."""
     if not text:
         return
-    text = str(text)
+    s = str(text)
     h = max(y1 - y0, 6)
     html = (
-        f'<p dir="rtl" style="font-family: Arial, sans-serif; '
+        f'<p dir="{_text_dir(s)}" style="font-family: {_FONT_STACK}; '
         f'font-size: {fs}px; font-weight: normal; '
         f'text-align: {align}; margin: 0; padding: 0; '
-        f'line-height: {h}px;">{text}</p>'
+        f'line-height: {h}px;">{_html.escape(s)}</p>'
     )
-    page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html)
+    page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html, css=HTML_CSS, archive=HTML_ARCH)
 
 
 # ── Digit-box helpers ────────────────────────────────────────────────────────
@@ -538,6 +559,7 @@ def render_form(form_num, data):
     buf = io.BytesIO()
     doc.save(buf, garbage=4, deflate=True, deflate_images=True,
              deflate_fonts=True, clean=True)
+    doc.close()
     return buf.getvalue()
 
 
@@ -606,6 +628,7 @@ def render_endpoint():
         pdf_bytes = render_form(form_num, data)
         pdf_bytes = _maybe_append_checklist(form_num, data, pdf_bytes)
         pdf_b64   = base64.b64encode(pdf_bytes).decode()
+        pdf_bytes = None
         raw_name  = data.get('common', {}).get('business_name', 'form')
         name      = re.sub(r'[^\w\-]', '_', raw_name, flags=re.ASCII)
         name      = re.sub(r'_+', '_', name).strip('_') or 'form'
@@ -613,6 +636,9 @@ def render_endpoint():
         return jsonify({'pdf_base64': pdf_b64, 'filename': filename})
     except Exception:
         return jsonify({'error': traceback.format_exc()}), 500
+    finally:
+        # שחרור זיכרון מפורש — השרת רץ על 512MB והפקות גדולות גרמו לקריסות OOM
+        gc.collect()
 
 
 @app.route('/merge', methods=['POST'])
@@ -654,7 +680,9 @@ def merge_endpoint():
         buf = io.BytesIO()
         merged.save(buf, garbage=4, deflate=True, deflate_images=True,
                     deflate_fonts=True, clean=True)
+        merged.close()
         pdf_b64 = base64.b64encode(buf.getvalue()).decode()
+        buf = None
 
         raw_name = payload.get('business_name',
                                forms_sorted[0].get('data', {})
@@ -668,6 +696,9 @@ def merge_endpoint():
         return jsonify({'pdf_base64': pdf_b64, 'filename': filename})
     except Exception:
         return jsonify({'error': traceback.format_exc()}), 500
+    finally:
+        # שחרור זיכרון מפורש — מיזוג של 7 טפסים הוא הצרכן הכבד ביותר בשרת
+        gc.collect()
 
 
 if __name__ == '__main__':

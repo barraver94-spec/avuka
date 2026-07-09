@@ -3,7 +3,7 @@ render_v2.py — Generic, config-driven Avuka fire-form renderer.
 Places every field defined in calibrations/form{N}.json onto the form.
 Supports type=image for signatures/stamps (base64 dataURL or http(s) URL).
 """
-import os, io, json, glob, base64
+import os, io, json, glob, base64, re, html as _html
 import fitz
 from bidi.algorithm import get_display
 
@@ -15,14 +15,36 @@ LANDSCAPE = (841.92, 595.32)
 FONT = os.path.join(BASE, "fonts", "DejaVuSans.ttf")
 _ALIGN = {"center": 1, "left": 0, "right": 2}
 
+# פונטים מוטמעים ל-insert_htmlbox: Heebo לעברית (עקבי בכל סביבה — Arial לא
+# קיימת בשרת של Render), DejaVu כגיבוי לסימנים ש-Heebo חסר (✓ למשל).
+HTML_ARCH = fitz.Archive(os.path.join(BASE, "fonts"))
+HTML_CSS = ('@font-face {font-family: hebmain; src: url(heebo.ttf);}'
+            '@font-face {font-family: hebmain; src: url(heebo-bold.ttf); font-weight: bold;}'
+            '@font-face {font-family: hebfall; src: url(DejaVuSans.ttf);}')
+_FONT_STACK = "hebmain, hebfall, sans-serif"
+
+_HEB_RE = re.compile(r'[\u0590-\u05FF]')
+_LTR_RE = re.compile(r'[A-Za-z0-9]')
+
+
+def _text_dir(s):
+    """ערך עם עברית → rtl. ערך לועזי/מספרי בלבד (טלפון, מייל, מס' רישיון,
+    דגם) → ltr, אחרת מקפים וסימני פיסוק מתהפכים בהקשר rtl. ניטרלי → rtl."""
+    if _HEB_RE.search(s):
+        return "rtl"
+    if _LTR_RE.search(s):
+        return "ltr"
+    return "rtl"
+
 
 def _put(page, x0, y0, x1, y1, text, fs=9, align="center"):
     if text is None or str(text) == "":
         return
-    html = (f'<p dir="rtl" style="font-family: Arial, sans-serif; '
+    s = str(text)
+    html = (f'<p dir="{_text_dir(s)}" style="font-family: {_FONT_STACK}; '
             f'font-size: {fs}px; font-weight: normal; text-align: {align}; '
-            f'margin: 0; padding: 0; line-height: {max(y1-y0,6)}px;">{text}</p>')
-    page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html)
+            f'margin: 0; padding: 0; line-height: {max(y1-y0,6)}px;">{_html.escape(s)}</p>')
+    page.insert_htmlbox(fitz.Rect(x0, y0, x1, y1), html, css=HTML_CSS, archive=HTML_ARCH)
 
 
 _DJV = fitz.Font(fontfile=FONT)
@@ -189,4 +211,5 @@ def render_form(form_num, data, blank_pdf=None):
 
     buf = io.BytesIO()
     doc.save(buf, garbage=4, deflate=True)
+    doc.close()
     return buf.getvalue()

@@ -3,5 +3,5 @@
 # הערה: ארגומנט CLI מפורש (--workers N) גובר על הקובץ הזה.
 workers = 1
 timeout = 120
-max_requests = 200
-max_requests_jitter = 30
+max_requests = 50
+max_requests_jitter = 10
