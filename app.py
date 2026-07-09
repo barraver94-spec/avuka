@@ -570,14 +570,27 @@ def page_image_endpoint():
             data = urllib.request.urlopen(req, timeout=60).read()
         doc = fitz.open('pdf', data)
         idx = min(max(page_no - 1, 0), doc.page_count - 1)
-        m = fitz.Matrix(dpi / 72.0, dpi / 72.0)
+        page = doc[idx]
+        # קנה מידה לפי dpi, אך תוחם את הצלע הארוכה — סריקות ענקיות ב-dpi גבוה
+        # מייצרות pixmap של מאות MB ומפוצצות את זיכרון ה-512MB. 2200px מספיקים ל-OCR.
+        MAX_SIDE = 2200
+        scale = dpi / 72.0
+        longest = max(page.rect.width, page.rect.height) * scale
+        if longest > MAX_SIDE:
+            scale *= MAX_SIDE / longest
+        m = fitz.Matrix(scale, scale)
         if rotate:
             m.prerotate(rotate)
-        pix = doc[idx].get_pixmap(matrix=m)
-        jpg = pix.tobytes('jpeg', jpg_quality=85)
+        pix = page.get_pixmap(matrix=m)
+        jpg = pix.tobytes('jpeg', jpg_quality=82)
+        w, h, pc = pix.width, pix.height, doc.page_count
+        pix = None
+        doc.close()
+        import gc
+        gc.collect()
         return jsonify({'jpg_base64': base64.b64encode(jpg).decode(),
-                        'width': pix.width, 'height': pix.height,
-                        'page_count': doc.page_count})
+                        'width': w, 'height': h,
+                        'page_count': pc})
     except Exception:
         return jsonify({'error': traceback.format_exc()}), 500
 
