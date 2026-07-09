@@ -1,4 +1,8 @@
-"""render_v2 (test copy for signature-image verification)."""
+"""
+render_v2.py — Generic, config-driven Avuka fire-form renderer.
+Places every field defined in calibrations/form{N}.json onto the form.
+Supports type=image for signatures/stamps (base64 dataURL or http(s) URL).
+"""
 import os, io, json, glob, base64
 import fitz
 from bidi.algorithm import get_display
@@ -83,8 +87,8 @@ def _put_fast(page, x0, y0, x1, y1, text, fs=8, align="center"):
 
 
 def _put_image(page, x0, y0, x1, y1, value, pad_y=0):
-    """חתימה/חותמת מ-URL (חתימות טכנאי מ-TechnicianSettings) או base64/dataURL
-    (חתימות שנלכדו ב-canvas). כשל בפענוח לעולם לא מפיל את הרינדור — פשוט מדלג."""
+    """חתימה/חותמת מ-URL (חתימות טכנאי) או base64/dataURL (חתימות canvas).
+    כשל בפענוח לעולם לא מפיל את הרינדור — פשוט מדלג."""
     if not value or not isinstance(value, str):
         return
     try:
@@ -172,4 +176,17 @@ def render_form(form_num, data, blank_pdf=None):
                     _put(page, f["x0"], f["y0"], f["x1"], f["y1"], "V", f.get("fs", 9), "center")
             elif ttype == "image":
                 _put_image(page, f["x0"], f["y0"], f["x1"], f["y1"], v, f.get("pad_y", 0))
-           
+            else:
+                _put(page, f["x0"], f["y0"], f["x1"], f["y1"], v, f.get("fs", 9), f.get("align", "center"))
+
+    if chunks:
+        ry = tbl["row_y"]
+        for k, chunk in enumerate(chunks):
+            page = doc[table_pages[k]]
+            for i, row in enumerate(chunk):
+                for c in tbl["columns"]:
+                    _put_fast(page, c["x0"], ry[i], c["x1"], ry[i + 1], row.get(c["key"], ""), 8, "center")
+
+    buf = io.BytesIO()
+    doc.save(buf, garbage=4, deflate=True)
+    return buf.getvalue()
