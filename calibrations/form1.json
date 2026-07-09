@@ -196,14 +196,15 @@
     {
       "id": "inspector_sig",
       "page": 0,
-      "type": "text",
+      "type": "image",
       "x0": 371.3,
       "y0": 688,
       "x1": 476.8,
       "y1": 704.1,
       "fs": 9,
       "align": "center",
-      "data_key": "inspector_name"
+      "data_key": "maintainer_sig",
+      "pad_y": 20
     },
     {
       "id": "company_name",
