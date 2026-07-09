@@ -24,11 +24,28 @@ SINGLE SOURCE OF TRUTH:
   stays in this file; only the numbers live in the config.
 ──────────────────────────────────────────────────────────────────────────────
 """
-import os, io, base64, traceback, re, json, gc, html as _html
+import os, io, base64, traceback, re, json, gc, hmac, html as _html
 import fitz
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
+
+# ── מפתח גישה משותף מול Base44 ───────────────────────────────────────────────
+# הערך חי רק במשתני סביבה (הריפו ציבורי!): RENDERER_SHARED_KEY גם כאן (Render →
+# Environment) וגם ב-Secrets של Base44. כל עוד המשתנה לא מוגדר — אין אכיפה,
+# כך שאפשר לפרוס את הקוד לפני הגדרת המפתח בלי להפיל את הפקת הטפסים.
+# /health נשאר פתוח — משמש את ה-warm-up של Base44 ואת ניטור Render.
+RENDERER_SHARED_KEY = os.environ.get('RENDERER_SHARED_KEY', '')
+
+
+@app.before_request
+def _require_shared_key():
+    if not RENDERER_SHARED_KEY or request.path == '/health':
+        return None
+    sent = request.headers.get('X-Render-Key', '')
+    if not hmac.compare_digest(sent, RENDERER_SHARED_KEY):
+        return jsonify({'error': 'unauthorized'}), 401
+    return None
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BG_DIR   = os.path.join(BASE_DIR, 'backgrounds')
 CFG_PATH = os.path.join(BASE_DIR, 'forms_config.json')
