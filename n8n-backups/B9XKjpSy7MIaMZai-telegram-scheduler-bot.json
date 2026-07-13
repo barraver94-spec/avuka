@@ -1,0 +1,764 @@
+{
+  "id": "B9XKjpSy7MIaMZai",
+  "name": "לוז אבוקה - בוט טלגרם",
+  "description": "בוט טלגרם לעדכון לוז עבודה אבוקה — מזהה מנהלים, מאמת הרשאות מחלקה, ושומר משימות לSupabase לעדכון Excel",
+  "active": false,
+  "createdAt": "2026-06-23T07:58:55.709Z",
+  "updatedAt": "2026-07-07T09:50:14.757Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true, "binaryMode": "separate" },
+  "connections": {
+    "Telegram Message": { "main": [[{ "node": "Extract Message", "type": "main", "index": 0 }]] },
+    "Is Register?": { "main": [[{ "node": "Find Manager by Phone", "type": "main", "index": 0 }], [{ "node": "Find Manager", "type": "main", "index": 0 }]] },
+    "Find Manager by Phone": { "main": [[{ "node": "Phone Found?", "type": "main", "index": 0 }]] },
+    "Phone Found?": { "main": [[{ "node": "Save Telegram ID", "type": "main", "index": 0 }], [{ "node": "Phone Not Found", "type": "main", "index": 0 }]] },
+    "Save Telegram ID": { "main": [[{ "node": "Registration OK", "type": "main", "index": 0 }]] },
+    "Find Manager": { "main": [[{ "node": "Is Authorized?", "type": "main", "index": 0 }]] },
+    "Is Authorized?": { "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }], [{ "node": "Not Authorized", "type": "main", "index": 0 }]] },
+    "Parse Schedule": { "main": [[{ "node": "Parse OK?", "type": "main", "index": 0 }]] },
+    "Parse OK?": { "main": [[{ "node": "Has Permission?", "type": "main", "index": 0 }], [{ "node": "Parse Error", "type": "main", "index": 0 }]] },
+    "Has Permission?": { "main": [[{ "node": "Build Sheet Name", "type": "main", "index": 0 }], [{ "node": "No Permission", "type": "main", "index": 0 }]] },
+    "Build Sheet Name": { "main": [[{ "node": "Read Sheet Data", "type": "main", "index": 0 }]] },
+    "Read Sheet Data": { "main": [[{ "node": "Find Cell", "type": "main", "index": 0 }]] },
+    "Is Query?": { "main": [[{ "node": "Parse Query", "type": "main", "index": 0 }], [{ "node": "Parse Schedule", "type": "main", "index": 0 }]] },
+    "Parse Query": { "main": [[{ "node": "Is Query OK?", "type": "main", "index": 0 }]] },
+    "Is Query OK?": { "main": [[{ "node": "Read Query Data", "type": "main", "index": 0 }], [{ "node": "Parse Error", "type": "main", "index": 0 }]] },
+    "Read Query Data": { "main": [[{ "node": "Format Tasks", "type": "main", "index": 0 }]] },
+    "Build Prompt": { "main": [[{ "node": "AI Parse", "type": "main", "index": 0 }]] },
+    "AI Parse": { "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]] },
+    "Format Tasks": { "main": [[{ "node": "Save Query Context", "type": "main", "index": 0 }]] },
+    "Save Query Context": { "main": [[{ "node": "Reply Tasks", "type": "main", "index": 0 }]] },
+    "Save Add Context": { "main": [[{ "node": "Schedule Added", "type": "main", "index": 0 }]] },
+    "Find OK?": { "main": [[{ "node": "Send Confirmation", "type": "main", "index": 0 }], [{ "node": "Write Error", "type": "main", "index": 0 }]] },
+    "Parse AI Response": { "main": [[{ "node": "Is Daily?", "type": "main", "index": 0 }]] },
+    "Is Daily?": { "main": [[{ "node": "Parse Daily", "type": "main", "index": 0 }], [{ "node": "Is Query?", "type": "main", "index": 0 }]] },
+    "Format Daily": { "main": [[{ "node": "Reply Daily", "type": "main", "index": 0 }]] },
+    "Check Pending": { "main": [[{ "node": "Has Pending?", "type": "main", "index": 0 }]] },
+    "Has Pending?": { "main": [[{ "node": "Execute Pending", "type": "main", "index": 0 }], [{ "node": "Is Register?", "type": "main", "index": 0 }]] },
+    "Execute Pending": { "main": [[{ "node": "Is Confirmed?", "type": "main", "index": 0 }]] },
+    "Is Confirmed?": { "main": [[{ "node": "Expand Cells", "type": "main", "index": 0 }], [{ "node": "Cancel Message", "type": "main", "index": 0 }]] },
+    "Parse Daily": { "main": [[{ "node": "Is Daily OK?", "type": "main", "index": 0 }]] },
+    "Is Daily OK?": { "main": [[{ "node": "Read Daily Data", "type": "main", "index": 0 }], [{ "node": "Parse Error", "type": "main", "index": 0 }]] },
+    "Read Daily Data": { "main": [[{ "node": "Format Daily", "type": "main", "index": 0 }]] },
+    "Extract Message": { "main": [[{ "node": "Is Voice?", "type": "main", "index": 0 }]] },
+    "Is Voice?": { "main": [[{ "node": "Get Voice File", "type": "main", "index": 0 }], [{ "node": "Check Pending", "type": "main", "index": 0 }]] },
+    "Get Voice File": { "main": [[{ "node": "Whisper Transcribe", "type": "main", "index": 0 }]] },
+    "Whisper Transcribe": { "main": [[{ "node": "Inject Voice Text", "type": "main", "index": 0 }]] },
+    "Inject Voice Text": { "main": [[{ "node": "Check Pending", "type": "main", "index": 0 }]] },
+    "Find Cell": { "main": [[{ "node": "Save Pending", "type": "main", "index": 0 }]] },
+    "Save Pending": { "main": [[{ "node": "Find OK?", "type": "main", "index": 0 }]] },
+    "Expand Cells": { "main": [[{ "node": "Write Task", "type": "main", "index": 0 }]] },
+    "Write Task": { "main": [[{ "node": "Aggregate Written", "type": "main", "index": 0 }]] },
+    "Aggregate Written": { "main": [[{ "node": "Save Add Context", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "891a1501-bcb4-4570-96fc-d359689810c6",
+      "name": "Telegram Message",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 288],
+      "parameters": { "updates": ["message"], "additionalFields": {} },
+      "webhookId": "3d736374-5fce-4b34-b1b2-aeaa7378d8fc"
+    },
+    {
+      "id": "a4abde49-c03a-4e11-b81e-19a10fb971d1",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [224, 288],
+      "parameters": {
+        "jsCode": "const msg = $input.item.json.message || $input.item.json.edited_message;\nif (!msg) return { json: { skip: true, chatId: '', fromId: '', text: '', isRegister: false, phone: '', isVoice: false, voiceFileId: '' } };\n\n// זיהוי הודעה קולית\nconst isVoice = !!(msg.voice && msg.voice.file_id);\nconst voiceFileId = isVoice ? msg.voice.file_id : '';\n\nif (!msg.text && !isVoice) {\n  return { json: { skip: true, chatId: String(msg.chat?.id||''), fromId: String(msg.from?.id||''), text: '', isRegister: false, phone: '', isVoice: false, voiceFileId: '' } };\n}\n\nconst text = msg.text ? msg.text.trim() : '';\nconst fromId = String(msg.from?.id || '');\nconst chatId = String(msg.chat?.id || '');\nconst isRegister = text.startsWith('/register');\nconst phone = isRegister ? text.replace('/register','').replace(/[^0-9]/g,'').trim() : '';\nreturn { json: { text, fromId, chatId, isRegister, phone, isVoice, voiceFileId } };"
+      }
+    },
+    {
+      "id": "4e902a6b-63c7-42a4-ba6b-607ade689048",
+      "name": "Is Register?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [448, 288],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.isRegister }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": true }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e66b64c9-df76-4744-a7cb-3e86760d4685",
+      "name": "Find Manager by Phone",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [672, 96],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "avuka_managers",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": { "conditions": [{ "keyName": "phone", "condition": "eq", "keyValue": "={{ $json.phone }}" }] }
+      }
+    },
+    {
+      "id": "fb3ff36c-5350-42e8-9fc7-f8890c6e0f81",
+      "name": "Phone Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [896, 96],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.id }}", "operator": { "type": "string", "operation": "exists" }, "rightValue": "" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "37fca525-3374-4387-bf7d-95668a8e9191",
+      "name": "Save Telegram ID",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1120, 0],
+      "parameters": {
+        "operation": "update",
+        "tableId": "avuka_managers",
+        "matchType": "allFilters",
+        "filters": { "conditions": [{ "keyName": "id", "condition": "eq", "keyValue": "={{ $json.id }}" }] },
+        "fieldsUi": { "fieldValues": [{ "fieldId": "telegram_id", "fieldValue": "={{ $('Extract Message').item.json.fromId }}" }] }
+      }
+    },
+    {
+      "id": "fb08d973-f38c-496a-93af-13e485778f2d",
+      "name": "Registration OK",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1344, 0],
+      "parameters": {
+        "chatId": "={{ $('Extract Message').item.json.chatId }}",
+        "text": "={{ 'שלום ' + $('Find Manager by Phone').item.json.name + '! נרשמת בהצלחה כמנהל מחלקת ' + $('Find Manager by Phone').item.json.department + ' 👍' }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "285efb33-4348-44fc-833f-63847ce6ef27"
+    },
+    {
+      "id": "238d564a-f1b5-45a0-8c2c-0d8eeef08ed8",
+      "name": "Phone Not Found",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1120, 192],
+      "parameters": {
+        "chatId": "={{ $('Extract Message').item.json.chatId }}",
+        "text": "❌ מספר הטלפון לא נמצא. פנה לבר.",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "c1b05b25-5860-4efc-84a7-0c8ecf8326b5"
+    },
+    {
+      "id": "c6a46e50-9fda-496c-a6f7-e839b86f5a87",
+      "name": "Find Manager",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [672, 480],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "avuka_managers",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": { "conditions": [{ "keyName": "telegram_id", "condition": "eq", "keyValue": "={{ $json.fromId }}" }] }
+      }
+    },
+    {
+      "id": "c07559a0-541b-4482-a96e-beb7d33ac8c9",
+      "name": "Is Authorized?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [896, 480],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.id }}", "operator": { "type": "string", "operation": "exists" }, "rightValue": "" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "d329752f-92da-4d29-b1af-41f3d0ee0d62",
+      "name": "Parse Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1808, 384],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const { foundTech, foundDept, taskDate, task, parseOk, canEdit, managerName, chatId, errorMsg: err } = $json;\nreturn { json: { foundTech, foundDept, taskDate, task: task || '', parseOk, canEdit, managerName, chatId, errorMsg: err || '❓ לא הבנתי' } };"
+      }
+    },
+    {
+      "id": "42dd7fa9-61ed-44e4-84b7-a3b094f74e0f",
+      "name": "Parse OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1344, 384],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.parseOk }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": true }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3d72b584-138a-4eda-81ba-f313a2f24203",
+      "name": "Has Permission?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1568, 288],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.canEdit }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": true }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0ae76da7-4278-4fa0-8e13-79763225bf39",
+      "name": "Insert Schedule Update",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1792, 192],
+      "parameters": {
+        "tableId": "avuka_schedule_updates",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "manager_name", "fieldValue": "={{ $json.managerName }}" },
+            { "fieldId": "technician", "fieldValue": "={{ $json.foundTech }}" },
+            { "fieldId": "task_date", "fieldValue": "={{ $json.taskDate }}" },
+            { "fieldId": "task", "fieldValue": "={{ $json.task }}" },
+            { "fieldId": "department", "fieldValue": "={{ $json.foundDept }}" },
+            { "fieldId": "telegram_chat_id", "fieldValue": "={{ $json.chatId }}" },
+            { "fieldId": "status", "fieldValue": "pending" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2252b223-9ff9-4dee-a913-bfc812dada9e",
+      "name": "Schedule Added",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2688, 192],
+      "parameters": {
+        "chatId": "={{ $('Execute Pending').item.json.chatId }}",
+        "text": "={{ '✅ נוסף ל-' + $('Execute Pending').item.json.count + ' ימים:\\n👷 ' + $('Execute Pending').item.json.foundTech + '\\n📅 ' + ($('Execute Pending').item.json.startDate === $('Execute Pending').item.json.endDate ? $('Execute Pending').item.json.startDate : ($('Execute Pending').item.json.startDate + ' עד ' + $('Execute Pending').item.json.endDate)) + '\\n📋 ' + $('Execute Pending').item.json.task }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "55cd2b29-058b-4e5a-a205-b74dc01ff4c8"
+    },
+    {
+      "id": "3eb99f5a-6888-4b94-9bc3-5fcfbab2793b",
+      "name": "No Permission",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1792, 384],
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ '⛔ אין הרשאה למחלקת ' + $json.foundDept }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "0391c851-af6b-424d-b07e-ddf2b61224fb"
+    },
+    {
+      "id": "63323dbb-4cb9-434b-9349-6271bcaa8afc",
+      "name": "Parse Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1568, 480],
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.errorMsg || '❓ לא הבנתי, נסה שוב' }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "ed596fde-1533-402c-9449-03e6d13518ec"
+    },
+    {
+      "id": "99d049f0-b376-4c97-a017-c4b245f796c7",
+      "name": "Not Authorized",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1120, 576],
+      "parameters": {
+        "chatId": "={{ $('Extract Message').item.json.chatId }}",
+        "text": "🔒 לא מורשה. שלח /register [מספר טלפון] כדי להרשם.",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "96e20565-373f-4494-9183-5d444a5f5e68"
+    },
+    {
+      "id": "529d2218-11df-4b76-aef0-b7f30ebe11b6",
+      "name": "Build Sheet Name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1792, 192],
+      "parameters": {
+        "jsCode": "const months = {1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט',9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר'};\nconst foundTech = $json.foundTech;\nconst task = $json.task;\nconst chatId = $json.chatId;\nconst managerName = $json.managerName || '';\nconst startStr = $json.taskDate;\nconst endStr = (($json.taskDateEnd && $json.taskDateEnd !== 'null') ? $json.taskDateEnd : startStr);\nfunction parse(s){ const p=String(s).split('/'); return new Date(Date.UTC(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]))); }\nfunction fmt(dt){ return ('0'+dt.getUTCDate()).slice(-2)+'/'+('0'+(dt.getUTCMonth()+1)).slice(-2)+'/'+dt.getUTCFullYear(); }\nfunction sheet(dt){ return dt.getUTCDate() + ' ' + months[dt.getUTCMonth()+1]; }\nlet s = parse(startStr); let e = parse(endStr);\nif (isNaN(s.getTime())) s = e;\nif (isNaN(e.getTime())) e = s;\nif (e < s) { const t=s; s=e; e=t; }\nconst MAX = 62;\nconst out = [];\nlet cur = new Date(s.getTime());\nlet guard = 0;\nwhile (cur <= e && guard < MAX) {\n  out.push({ json: { foundTech, task, chatId, managerName, taskDate: fmt(cur), sheetName: sheet(cur), startDate: fmt(s), endDate: fmt(e) } });\n  cur = new Date(cur.getTime() + 24*60*60*1000);\n  guard++;\n}\nif (out.length === 0) out.push({ json: { foundTech, task, chatId, managerName, taskDate: startStr, sheetName: sheet(s), startDate: fmt(s), endDate: fmt(e) } });\nreturn out;"
+      }
+    },
+    {
+      "id": "95fa9f71-26fc-4da6-80fd-e7f29ad1d71d",
+      "name": "Read Sheet Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2016, 192],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/1K2Frb160ZPS3VY5QJl4cUo0-UlRNxcj6HxsYqQMYzB0/values/' + encodeURIComponent($json.sheetName + '!A1:T70') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      }
+    },
+    {
+      "id": "a3453355-6785-4f9a-a28a-2f83d28f81d7",
+      "name": "Find Cell",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 192],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const vals = $json.values || [];\nconst techName = $('Build Sheet Name').item.json.foundTech;\nconst task = $('Build Sheet Name').item.json.task;\nconst sheetName = $('Build Sheet Name').item.json.sheetName;\nconst chatId = $('Build Sheet Name').item.json.chatId;\nconst taskDate = $('Build Sheet Name').item.json.taskDate;\n\nif (!vals || vals.length === 0) {\n  return { json: { findOk: false, errorMsg: 'הלוז ל-' + taskDate + ' לא נמצא', chatId } };\n}\n\n// Helper: convert col index (0-based) to sheet letter (A, B, ..., Z, AA, AB...)\nfunction colToLetter(n) {\n  let s = '';\n  n++;\n  while (n > 0) {\n    n--;\n    s = String.fromCharCode(65 + (n % 26)) + s;\n    n = Math.floor(n / 26);\n  }\n  return s;\n}\n\n// 1. Detect task + notes columns from header rows (rows 0 and 1)\nlet taskColIndices = [];\nlet notesColIndices = [];\nfor (let r = 0; r <= Math.min(1, vals.length - 1); r++) {\n  const hrow = vals[r] || [];\n  for (let c = 2; c < hrow.length; c++) {\n    const hval = String(hrow[c]||'').trim();\n    if (hval === 'משימה') taskColIndices.push(c);\n    if (hval === 'הערות') notesColIndices.push(c);\n  }\n  if (taskColIndices.length > 0) break;\n}\nif (taskColIndices.length === 0) taskColIndices = [3, 4, 5, 6];\n\n// 2. Find technician row\nconst normalize = s => String(s||'').trim();\nconst techNorm = normalize(techName).toLowerCase();\n\nlet rowIdx = -1;\nfor (let i = 0; i < vals.length; i++) {\n  const row = vals[i];\n  const cellA = normalize(row[0]).toLowerCase();\n  const cellB = normalize(row[1]).toLowerCase();\n  const full1 = (cellA + ' ' + cellB).trim();\n  const full2 = (cellB + ' ' + cellA).trim();\n  if (\n    cellA === techNorm || cellB === techNorm ||\n    full1 === techNorm || full2 === techNorm ||\n    (techNorm.length > 2 && cellA.length > 1 && techNorm.includes(cellA)) ||\n    (techNorm.length > 2 && cellB.length > 1 && techNorm.includes(cellB)) ||\n    (techNorm.length > 2 && cellA.length > 1 && cellA.includes(techNorm)) ||\n    (techNorm.length > 2 && cellB.length > 1 && cellB.includes(techNorm))\n  ) {\n    rowIdx = i;\n    break;\n  }\n}\n\nif (rowIdx === -1) {\n  return { json: { findOk: false, errorMsg: 'לא נמצא טכנאי: ' + techName + ' בלוז ל-' + taskDate, chatId } };\n}\n\nconst row = vals[rowIdx];\n\n// 3. Try משימה columns first\nlet colIdx = -1;\nfor (const ci of taskColIndices) {\n  if (!String(row[ci]||'').trim()) { colIdx = ci; break; }\n}\n\n// 4. If all משימה full -> try הערות column\nif (colIdx === -1) {\n  for (const ci of notesColIndices) {\n    if (!String(row[ci]||'').trim()) { colIdx = ci; break; }\n  }\n}\n\n// 5. If הערות also full -> overflow to next empty column past all known columns\nif (colIdx === -1) {\n  const maxKnownCol = Math.max(\n    taskColIndices.length ? Math.max.apply(null, taskColIndices) : 0,\n    notesColIndices.length ? Math.max.apply(null, notesColIndices) : 0\n  );\n  for (let c = maxKnownCol + 1; c < 50; c++) {\n    if (!String(row[c]||'').trim()) { colIdx = c; break; }\n  }\n}\n\nif (colIdx === -1) {\n  return { json: { findOk: false, errorMsg: 'אין מקום פנוי ל-' + techName + ' ב-' + taskDate, chatId } };\n}\n\nconst colLetter = colToLetter(colIdx);\nreturn { json: { findOk: true, foundTech: techName, task, sheetName, chatId, taskDate, cellAddr: colLetter + (rowIdx + 1) } };"
+      }
+    },
+    {
+      "id": "cbe92a24-cefa-4e9e-9014-e61f1e7a79d5",
+      "name": "Write Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2464, 192],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/1K2Frb160ZPS3VY5QJl4cUo0-UlRNxcj6HxsYqQMYzB0/values/' + encodeURIComponent($json.sheetName + '!' + $json.cellAddr) + '?valueInputOption=USER_ENTERED' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { values: [[$json.task]] } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "6ecb3489-a27f-4692-b6b8-f805a081f474",
+      "name": "Is Query?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1600, 480],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.intent }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "query" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "36e17491-74c5-411d-8c4b-617fbb26e601",
+      "name": "Parse Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1808, 576],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const months = {1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט',9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר'};\nconst foundTech = $json.foundTech;\nconst taskDate = $json.taskDate;\nconst queryOk = $json.queryOk;\nconst chatId = $json.chatId;\nconst searchKeyword = $json.searchKeyword || null;\nconst errorMsg = $json.errorMsg || '❓ לא הבנתי';\nif (!taskDate) {\n  return { json: { foundTech, taskDate: null, sheetName: null, chatId, queryOk: false, searchKeyword, errorMsg } };\n}\nconst dp = taskDate.split('/');\nconst sheetName = parseInt(dp[0]) + ' ' + months[parseInt(dp[1])];\nreturn { json: { foundTech, taskDate, sheetName, chatId, queryOk, searchKeyword, errorMsg } };"
+      }
+    },
+    {
+      "id": "631e9830-8b9a-47bc-b271-64659a71f875",
+      "name": "Is Query OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1568, 576],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.queryOk }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": true }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "87199e62-ec2c-4a96-af88-b1121d2909b7",
+      "name": "Read Query Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1792, 576],
+      "parameters": {
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/1K2Frb160ZPS3VY5QJl4cUo0-UlRNxcj6HxsYqQMYzB0/values/' + encodeURIComponent($json.sheetName + '!A1:P70') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      }
+    },
+    {
+      "id": "f34cdf5c-a593-4156-b9b0-a5e4f41d1268",
+      "name": "Format Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2016, 576],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const vals = $json.values || [];\nconst techName = $('Parse Query').item.json.foundTech;\nconst taskDate = $('Parse Query').item.json.taskDate;\nconst chatId = $('Parse Query').item.json.chatId;\nconst searchKeyword = $('Parse Query').item.json.searchKeyword || null;\n\n// Mode 1: search keyword across all techs\nif (!techName && searchKeyword) {\n  const matches = [];\n  for (let i = 0; i < vals.length; i++) {\n    const row = vals[i];\n    const cellA = String(row[0]||'').trim();\n    const cellB = String(row[1]||'').trim();\n    const name = cellB ? cellA + ' ' + cellB : cellA;\n    if (!name) continue;\n    for (let c = 3; c < 20; c++) {\n      const cell = String(row[c]||'').trim();\n      if (cell && cell.includes(searchKeyword)) {\n        matches.push(name + ': ' + cell);\n        break;\n      }\n    }\n  }\n  let reply;\n  if (matches.length === 0) {\n    reply = '❌ לא נמצא איש עם \"' + searchKeyword + '\" ב-' + taskDate;\n  } else {\n    reply = '🔍 ' + searchKeyword + ' | ' + taskDate + ':\\n' + matches.map((m,i) => (i+1)+'. '+m).join('\\n');\n  }\n  return { json: { reply, chatId } };\n}\n\n// Mode 2: specific technician\nlet rowIdx = -1;\nfor (let i = 0; i < vals.length; i++) {\n  const row = vals[i];\n  const cellA = String(row[0]||'').trim();\n  const cellB = String(row[1]||'').trim();\n  const fullName = cellB ? cellA+' '+cellB : cellA;\n  if (cellA===techName||cellB===techName||fullName===techName) { rowIdx=i; break; }\n}\nif (rowIdx === -1) return { json: { reply: '❌ לא נמצא ' + techName + ' בלוז ל-' + taskDate, chatId } };\nconst row = vals[rowIdx];\nconst tasks = [];\nfor (let c = 3; c < 20; c++) { const cell = row[c] ? String(row[c]).trim() : ''; if (cell) tasks.push(cell); }\nlet reply;\nif (tasks.length === 0) {\n  reply = '📋 ' + techName + ' — אין משימות רשומות ב-' + taskDate;\n} else {\n  reply = '📋 ' + techName + ' | ' + taskDate + ':\\n' + tasks.map((t,i) => (i+1)+'. '+t).join('\\n');\n}\nreturn { json: { reply, chatId } };"
+      }
+    },
+    {
+      "id": "8204ebf9-416e-4fe7-b87c-94c50d7048be",
+      "name": "Reply Tasks",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2240, 576],
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.reply }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "49fa574a-a19a-4959-9ef0-59aa35d30141"
+    },
+    {
+      "id": "331051de-b7bb-4bc2-a16f-c4eb3a72f0e6",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1072, 480],
+      "parameters": {
+        "jsCode": "let text = $('Extract Message').item.json.text;\ntry { const _vt = $('Inject Voice Text').first().json.text; if (_vt && _vt.trim()) text = _vt.trim(); } catch(e) {}\nconst chatId = $('Extract Message').item.json.chatId;\nconst fmt = d => ('0'+d.getUTCDate()).slice(-2)+'/'+('0'+(d.getUTCMonth()+1)).slice(-2)+'/'+d.getUTCFullYear();\nconst dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];\nconst nowIL = new Date(Date.now() + 3*60*60*1000);\nconst todayDay = dayNames[nowIL.getUTCDay()];\nconst todayStr = fmt(nowIL);\nconst tomorrowStr = fmt(new Date(nowIL.getTime() + 24*60*60*1000));\nconst yesterdayStr = fmt(new Date(nowIL.getTime() - 24*60*60*1000));\nconst dayAfterStr = fmt(new Date(nowIL.getTime() + 48*60*60*1000));\n\nlet ctxBlock = '';\ntry {\n  const sd = $getWorkflowStaticData('global');\n  const ctx = sd['ctx_' + chatId];\n  if (ctx && ctx.taskDate) {\n    const dp = ctx.taskDate.split('/');\n    const ctxDate = new Date(Date.UTC(parseInt(dp[2]), parseInt(dp[1])-1, parseInt(dp[0])));\n    const ctxDayName = dayNames[ctxDate.getUTCDay()];\n    ctxBlock = '\\n\\n=== CONVERSATION CONTEXT ===\\nUser previously asked about: ' + (ctx.foundTech || 'all techs') + ' on ' + ctx.taskDate + ' (' + ctxDayName + ').\\nCRITICAL: Relative date expressions in follow-ups are relative to CONTEXT DATE (' + ctx.taskDate + '), NOT today (' + todayStr + ').\\nExamples: \"ויום לפני?\" = one day before ' + ctx.taskDate + ', \"ובשבוע שלפני?\" = 7 days before.\\nIf no tech name in message, reuse foundTech=\"' + (ctx.foundTech || 'null') + '\".\\n=== END CONTEXT ===';\n  }\n} catch(e) {}\n\nlet clarifyBlock = '';\ntry {\n  const sd2 = $getWorkflowStaticData('global');\n  const cl = sd2['clarify_' + chatId];\n  if (cl) {\n    clarifyBlock = '\\n\\n=== CLARIFICATION IN PROGRESS ===\\nThe user is answering a clarification for an ADD (schedule task) request. Known so far: foundTech=' + (cl.foundTech || '?') + ', foundDept=' + (cl.foundDept || '?') + ', taskDate=' + (cl.taskDate || '?') + ', task=' + (cl.task || '?') + '.\\nThe new message provides the missing detail(s). MERGE the known fields with the new info and return a COMPLETE add JSON (intent MUST be \"add\"). Keep known non-null fields unless the user explicitly changes them. For dates use the DATE REFERENCE exactly.\\n=== END CLARIFICATION ===';\n  }\n} catch(e) {}\n\nconst prompt = 'You are an intent+date parser for a Hebrew employee scheduling bot. Today is ' + todayDay + ' (' + todayStr + ').' + ctxBlock + clarifyBlock + '\\n\\nTechnicians by department:\\nשירות: אלי, אלירן, יוסי, קנדלקר, משה מרגלית, ערן רוזנברג, טום, עידן כידרא, נתנאל, שאול, טל רוטהולץ\\nגילוי: יותם, מני, ראובן, איציק יעיש, אושרי, משה מויאל, אבירן, משה צח, הראל, לירון, נדב, שמואל, מנדי, ינון, בר נתן, אריאל\\nמתזים: נאור, אנטון, יוסף, גמאל, אליאס, אופיר, טים, דודי\\nמשאבות: ולאדיק, אלכס, חמודי, מיכאל, יעקב, ארטור\\n\\nReturn ONLY valid JSON (no markdown):\\n{\"intent\":\"query or add or daily or unknown\",\"foundTech\":\"tech name or null\",\"foundDept\":\"dept or null\",\"taskDate\":\"DD/MM/YYYY or null\",\"task\":\"task description or null\",\"searchKeyword\":\"Hebrew keyword to search ALL techs or null\"}\\n\\nintent rules:\\n- query: asking about a specific tech schedule\\n- add: adding a task to a technician schedule. Includes MANY Hebrew phrasings, ALL meaning add-to-schedule: \"תפתח קריאת שירות ל...\", \"תפתח קריאה ל...\", \"תרשום ל...\", \"תכניס ל...\", \"תוסיף ל...\", \"תשבץ את...\", \"שים ל...\", \"צריך לשלוח את... ל...\", \"תזמן ל...\". CRITICAL: the words \"קריאת שירות\" or \"קריאה\" in this bot ALWAYS mean a schedule task — treat as add.\\n- daily: asking for full schedule for a date (\"מה הלוז היום?\", \"תראה לי את הלוז\", \"מי עובד מחר?\") — set taskDate, foundDept optional\\n- searchKeyword: when asking \"who was on vacation/sick\" across all techs\\n\\nDATE REFERENCE (use these EXACT dates, DO NOT recalculate):\\n- היום / today = ' + todayStr + '\\n- מחר / tomorrow = ' + tomorrowStr + '\\n- מחרתיים / day after tomorrow = ' + dayAfterStr + '\\n- אתמול / yesterday = ' + yesterdayStr + '\\n\\nDate rules:\\n- For היום/מחר/מחרתיים/אתמול use the DATE REFERENCE above EXACTLY.\\n- יום שלישי שעבר=last Tuesday, etc. — compute from today (' + todayStr + ').\\n- DD.MM or DD/MM without year=2026\\n\\nExamples:\\n- \"תפתח קריאת שירות למשה מרגלית למחר על תקלה במבנה נריה\" → {\"intent\":\"add\",\"foundTech\":\"משה מרגלית\",\"foundDept\":\"שירות\",\"taskDate\":\"' + tomorrowStr + '\",\"task\":\"תקלה במבנה נריה\"}\\n- \"תוסיף לאלי מחר ביקורת שנתית בקיסריה\" → {\"intent\":\"add\",\"foundTech\":\"אלי\",\"foundDept\":\"שירות\",\"taskDate\":\"' + tomorrowStr + '\",\"task\":\"ביקורת שנתית בקיסריה\"}\\n- \"מה הלוז של נאור מחר?\" → {\"intent\":\"query\",\"foundTech\":\"נאור\",\"taskDate\":\"' + tomorrowStr + '\"}\\n\\nMessage: ' + text;\n\nreturn { json: {\n  model: 'claude-haiku-4-5-20251001',\n  max_tokens: 200,\n  messages: [{ role: 'user', content: prompt }]\n}};"
+      }
+    },
+    {
+      "id": "245665a8-545b-4ca2-a8f3-e578e76809ba",
+      "name": "AI Parse",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 480],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "edc4cf9a-8bd9-4fe9-a6ac-945ef07d8c0a",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 480],
+      "parameters": {
+        "jsCode": "const chatId = $('Extract Message').item.json.chatId;\nconst managerDept = $('Find Manager').item.json.department;\nconst managerName = $('Find Manager').item.json.name;\n\nlet parsed = null;\ntry {\n  const text = ($json.content && $json.content[0] && $json.content[0].text) ? $json.content[0].text : '';\n  const match = text.match(/\\{[\\s\\S]*?\\}/);\n  if (match) parsed = JSON.parse(match[0]);\n} catch(e) {}\n\nconst sd = $getWorkflowStaticData('global');\nconst clarifyKey = 'clarify_' + chatId;\nconst existingClarify = sd[clarifyKey] || null;\n\nif (!parsed) {\n  return { json: { intent: 'unknown', foundTech: null, foundDept: null, taskDate: null, task: null, searchKeyword: null, parseOk: false, queryOk: false, canEdit: false, chatId, managerName, needsClarification: false, errorMsg: existingClarify ? '❓ לא הבנתי את התשובה — נסה שוב' : '❓ לא הבנתי, נסה שוב' } };\n}\n\nlet intent = parsed.intent || 'unknown';\nlet foundTech = (parsed.foundTech && parsed.foundTech !== 'null') ? String(parsed.foundTech) : null;\nlet foundDept = (parsed.foundDept && parsed.foundDept !== 'null') ? String(parsed.foundDept) : null;\nlet taskDate = (parsed.taskDate && parsed.taskDate !== 'null') ? String(parsed.taskDate) : null;\nlet task = (parsed.task && parsed.task !== 'null') ? String(parsed.task) : '';\nconst searchKeyword = (parsed.searchKeyword && parsed.searchKeyword !== 'null') ? String(parsed.searchKeyword) : null;\n\n// Clarification merge: if a clarify is open, treat as add-in-progress and merge known fields\nif (existingClarify) {\n  intent = 'add';\n  foundTech = foundTech || existingClarify.foundTech || null;\n  foundDept = foundDept || existingClarify.foundDept || null;\n  taskDate = taskDate || existingClarify.taskDate || null;\n  task = task || existingClarify.task || '';\n}\n\nconst canEdit = managerDept === 'all' || managerDept === foundDept;\nconst parseOk = intent === 'add' && !!foundTech && !!taskDate && !!task;\nconst queryOk = intent === 'query' && (!!foundTech || (!!searchKeyword && !!taskDate));\n\nlet errorMsg = '❓ לא הבנתי — ניתן לשאול על לוז או להוסיף משימה';\nlet needsClarification = false;\n\nif (intent === 'add' && !parseOk) {\n  const prevRounds = existingClarify ? (existingClarify.rounds || 0) : 0;\n  const rounds = prevRounds + 1;\n  if (rounds > 3) {\n    delete sd[clarifyKey];\n    errorMsg = 'בוא ננסה מחדש — תאר בהודעה אחת: שם הטכנאי, התאריך, ומה לרשום';\n  } else {\n    sd[clarifyKey] = { foundTech, foundDept, taskDate, task, rounds };\n    needsClarification = true;\n    if (!foundTech) errorMsg = 'לאיזה טכנאי לרשום?';\n    else if (!taskDate) errorMsg = foundTech ? ('לאיזה תאריך לרשום את המשימה ל' + foundTech + '?') : 'לאיזה תאריך לרשום?';\n    else errorMsg = 'מה לרשום (תיאור המשימה)?';\n  }\n} else if (intent === 'add' && parseOk) {\n  delete sd[clarifyKey];\n} else if (intent === 'query') {\n  if (!foundTech && !searchKeyword) errorMsg = '❓ לא זיהיתי שם טכנאי — ציין שם מהרשימה';\n  else if (!taskDate) errorMsg = '❓ לא זיהיתי תאריך — הוסף תאריך כמו \"מחר\" או \"25/06\"';\n} else if (intent === 'daily') {\n  if (!taskDate) errorMsg = '❓ לא זיהיתי תאריך ללוז';\n}\n\nreturn { json: { intent, foundTech, foundDept, taskDate, task, searchKeyword, parseOk, queryOk, canEdit, chatId, managerName, errorMsg, needsClarification } };"
+      }
+    },
+    {
+      "id": "ee8eee44-7123-431a-8300-c08663393d34",
+      "name": "Save Query Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2128, 576],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const chatId = $('Parse Query').item.json.chatId;\nconst foundTech = $('Parse Query').item.json.foundTech;\nconst taskDate = $('Parse Query').item.json.taskDate;\ntry {\n  const sd = $getWorkflowStaticData('global');\n  if (chatId && foundTech) sd['ctx_'+chatId] = { foundTech, taskDate };\n} catch(e) {}\nreturn $input.item;"
+      }
+    },
+    {
+      "id": "7f46b6c2-1cbc-4c30-8692-0cd6ca89b73b",
+      "name": "Save Add Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2576, 192],
+      "parameters": {
+        "jsCode": "const chatId = $('Execute Pending').item.json.chatId;\nconst foundTech = $('Execute Pending').item.json.foundTech;\nconst taskDate = $('Execute Pending').item.json.startDate;\ntry {\n  const sd = $getWorkflowStaticData('global');\n  if (chatId && foundTech) sd['ctx_'+chatId] = { foundTech, taskDate };\n} catch(e) {}\nreturn $input.item;"
+      }
+    },
+    {
+      "id": "ca2f2ca1-94c3-406a-bffb-1dc7965dd491",
+      "name": "Find OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [2352, 192],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.count }}", "operator": { "type": "number", "operation": "gt" }, "rightValue": 0 }],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "69440ee9-56d4-4037-a436-ce80bc6fa1c7",
+      "name": "Write Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2576, 288],
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ '❌ ' + $json.errorMsg }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "4c94bca9-5c16-43ae-a1f8-8c96339fc97d"
+    },
+    {
+      "id": "25d2c16d-9633-4f44-8434-63952d533f9b",
+      "name": "Is Daily?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1600, 288],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.intent }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "daily" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "d089fdbe-9a67-4592-8fa7-e3de3fa96e32",
+      "name": "Parse Daily",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1808, 288],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const months = {1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט',9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר'};\nconst taskDate = $json.taskDate;\nconst chatId = $json.chatId;\nconst foundDept = $json.foundDept || null;\nif (!taskDate) {\n  return { json: { taskDate: null, sheetName: null, chatId, foundDept, dailyOk: false } };\n}\nconst dp = taskDate.split('/');\nconst sheetName = parseInt(dp[0]) + ' ' + months[parseInt(dp[1])];\nreturn { json: { taskDate, sheetName, chatId, foundDept, dailyOk: true } };"
+      }
+    },
+    {
+      "id": "e0f71f21-a36b-409a-a299-b1b9f1909ddf",
+      "name": "Format Daily",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 288],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const vals = $json.values || [];\nconst taskDate = $('Parse Daily').item.json.taskDate;\nconst chatId = $('Parse Daily').item.json.chatId;\nconst nl = String.fromCharCode(10);\n\nif (!vals || vals.length === 0) {\n  return { json: { reply: '❌ לא נמצא לוז ל-' + taskDate, chatId } };\n}\n\nlet taskCols = [];\nfor (let r = 0; r <= 1; r++) {\n  const hr = vals[r] || [];\n  for (let c = 2; c < hr.length; c++) {\n    if (String(hr[c]||'').trim() === 'משימה') taskCols.push(c);\n  }\n  if (taskCols.length > 0) break;\n}\nif (taskCols.length === 0) taskCols = [3,4,5,6];\n\nconst lines = [];\nfor (let i = 2; i < vals.length; i++) {\n  const row = vals[i];\n  const cellB = String(row[1]||'').trim();\n  if (!cellB || cellB.length < 2) continue;\n  const tasks = [];\n  for (const c of taskCols) {\n    const cell = String(row[c]||'').trim();\n    if (cell) tasks.push(cell);\n  }\n  if (tasks.length > 0) {\n    lines.push('• ' + cellB + ': ' + tasks.join(' | '));\n  }\n}\n\nconst header = lines.length === 0\n  ? '📋 אין משימות רשומות ב-' + taskDate\n  : '📋 לוז ' + taskDate + ' (' + lines.length + ' טכנאים):';\n\nconst reply = lines.length === 0 ? header : header + nl + lines.join(nl);\n\nreturn { json: { reply, chatId } };"
+      }
+    },
+    {
+      "id": "28254e81-38df-47b8-a0f7-ba1d7b319635",
+      "name": "Reply Daily",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2464, 288],
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.reply }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "9854a331-a2e9-42c1-97d1-14a666ca544d"
+    },
+    {
+      "id": "53b8495c-2d91-475a-9b44-c992f277ebc0",
+      "name": "Check Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [336, 480],
+      "parameters": {
+        "jsCode": "const chatId = $json.chatId;\nif (!chatId) return { json: { ...$json, hasPending: false, pendingAction: null } };\nconst text = ($json.text || '').trim();\nconst sd = $getWorkflowStaticData('global');\n\n// Clear clarify on explicit cancel or /register\nif (text.startsWith('/register') || text === 'בטל' || text === 'ביטול') {\n  delete sd['clarify_' + chatId];\n}\n\nconst pending = sd['pending_' + chatId];\nif (pending) {\n  if (text === 'כן' || text === 'yes') {\n    return { json: { ...$json, hasPending: true, pendingAction: 'confirm' } };\n  } else if (text === 'לא' || text === 'no' || text === 'בטל') {\n    delete sd['pending_' + chatId];\n    return { json: { ...$json, hasPending: true, pendingAction: 'cancel' } };\n  }\n  // New command while pending — clear pending and continue normally\n  delete sd['pending_' + chatId];\n}\nreturn { json: { ...$json, hasPending: false, pendingAction: null } };"
+      }
+    },
+    {
+      "id": "675dfaa4-c8e4-484a-be3d-d4ab0c298561",
+      "name": "Has Pending?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [448, 480],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.hasPending }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": true }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b1dd4348-ed9f-4061-aa71-6b916644c270",
+      "name": "Execute Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [672, 576],
+      "parameters": {
+        "jsCode": "const chatId = $json.chatId;\nconst action = $json.pendingAction;\nconst sd = $getWorkflowStaticData('global');\nconst pending = sd['pending_' + chatId];\nif (action === 'confirm' && pending) {\n  delete sd['pending_' + chatId];\n  return { json: {\n    action: 'confirm',\n    cells: pending.cells || [],\n    task: pending.task,\n    chatId: pending.chatId,\n    foundTech: pending.foundTech,\n    startDate: pending.startDate,\n    endDate: pending.endDate,\n    count: (pending.cells || []).length,\n    managerName: pending.managerName || ''\n  }};\n}\ndelete sd['pending_' + chatId];\nreturn { json: { action: 'cancel', chatId } };"
+      }
+    },
+    {
+      "id": "81a93c57-1efe-407a-8d92-13d1fe2ac4ed",
+      "name": "Is Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [896, 576],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.action }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "confirm" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "920cd241-931a-479e-820f-615cde53eb6b",
+      "name": "Cancel Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1120, 672],
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "❌ בוטל",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "39d37bee-1337-48ee-a42d-fcbd97397d63"
+    },
+    {
+      "id": "738d0ba9-6e84-429d-ae77-ada929a4d902",
+      "name": "Save Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2576, 96],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst sd = $getWorkflowStaticData('global');\nlet chatId = '', foundTech = '', task = '', startDate = '', endDate = '', managerName = '';\ntry {\n  const b = $('Build Sheet Name').first().json;\n  chatId = b.chatId; foundTech = b.foundTech; task = b.task; startDate = b.startDate; endDate = b.endDate; managerName = b.managerName || '';\n} catch(e) {}\nconst cells = [];\nfor (const it of items) {\n  const j = it.json || {};\n  if (j.findOk && j.cellAddr && j.sheetName) cells.push({ sheetName: j.sheetName, cellAddr: j.cellAddr, taskDate: j.taskDate });\n}\nconst total = items.length;\nconst count = cells.length;\nconst skipped = total - count;\nif (count > 0 && chatId) {\n  sd['pending_' + chatId] = { foundTech, task, chatId, cells, startDate, endDate, count, managerName };\n}\nconst errorMsg = count > 0 ? '' : 'לא נמצא מקום פנוי או גיליון מתאים בטווח שביקשת';\nreturn { json: { chatId, foundTech, task, startDate, endDate, count, skipped, total, errorMsg } };"
+      }
+    },
+    {
+      "id": "c29cd2dc-9e30-4904-b773-a66e613310ed",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2800, 96],
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ '➕ עומד להוסיף:\\n👷 ' + $json.foundTech + '\\n📅 ' + ($json.startDate === $json.endDate ? $json.startDate : ($json.startDate + ' עד ' + $json.endDate + ' (' + $json.count + ' ימים)')) + '\\n📋 ' + $json.task + ($json.skipped > 0 ? ('\\n⚠️ ' + $json.skipped + ' ימים ללא גיליון/מקום דולגו') : '') + '\\n\\nלאשר? ✅ כתוב כן / ❌ לא' }}",
+        "additionalFields": { "appendAttribution": false }
+      },
+      "webhookId": "f346b2a7-a99c-4f09-9598-e19808615305"
+    },
+    {
+      "id": "e7a59d37-d27f-48a8-9b94-c3a05153f5b6",
+      "name": "Read Daily Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2144, 288],
+      "parameters": {
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/1K2Frb160ZPS3VY5QJl4cUo0-UlRNxcj6HxsYqQMYzB0/values/' + encodeURIComponent($json.sheetName + '!A1:T70') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      }
+    },
+    {
+      "id": "7d9a5bee-12ce-4a59-b68f-2a6f662fd158",
+      "name": "Is Daily OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1968, 288],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.dailyOk }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": true }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c3492a10-f01e-4db2-8a83-46e305ed5026",
+      "name": "Is Voice?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [336, 288],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.isVoice }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": "" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5b4c17d5-59cf-422c-841f-1721e3dc0678",
+      "name": "Get Voice File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [560, 144],
+      "onError": "continueRegularOutput",
+      "parameters": { "resource": "file", "fileId": "={{ $json.voiceFileId }}", "additionalFields": {} },
+      "webhookId": "d263c6b1-56e5-41de-b57f-1f5f2f150436"
+    },
+    {
+      "id": "0a2ce63a-b15e-4517-a320-7642f9678a3f",
+      "name": "Whisper Transcribe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [784, 144],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" },
+            { "name": "model", "value": "whisper-1" },
+            { "name": "language", "value": "he" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "16921291-2522-4b57-919a-7b93df2a63a2",
+      "name": "Inject Voice Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1008, 144],
+      "parameters": {
+        "jsCode": "const transcript = $('Whisper Transcribe').first().json.text || '';\nconst base = $('Extract Message').first().json;\nreturn { json: {\n  ...base,\n  text: transcript.trim(),\n  isVoice: false\n} };"
+      }
+    },
+    {
+      "id": "8db455c7-aa26-4a3b-917f-e9196bfc295d",
+      "name": "Expand Cells",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 320],
+      "parameters": {
+        "jsCode": "const ep = $('Execute Pending').first().json;\nconst cells = ep.cells || [];\nconst task = ep.task, foundTech = ep.foundTech, chatId = ep.chatId;\nif (!cells.length) return [];\nreturn cells.map(c => ({ json: { sheetName: c.sheetName, cellAddr: c.cellAddr, taskDate: c.taskDate, task, foundTech, chatId } }));"
+      }
+    },
+    {
+      "id": "e930f862-c7b0-44d0-9cdb-7567ab11862d",
+      "name": "Aggregate Written",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2520, 320],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet written = 0;\nfor (const it of items) {\n  const j = it.json || {};\n  if (j && !j.error) written++;\n}\nreturn { json: { written: written || items.length } };"
+      }
+    }
+  ]
+}

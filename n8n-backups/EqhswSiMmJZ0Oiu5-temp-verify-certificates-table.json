@@ -1,0 +1,36 @@
+{
+  "id": "EqhswSiMmJZ0Oiu5",
+  "name": "TEMP - Verify Certificates Table",
+  "description": "בדיקה זמנית האם טבלת certificates קיימת ב-Supabase",
+  "active": false,
+  "createdAt": "2026-05-29T07:06:11.572Z",
+  "updatedAt": "2026-05-29T07:06:11.572Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true },
+  "connections": {
+    "Start": { "main": [[{ "node": "Check Certificates Table", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "dccfd042-b972-4fce-929d-cb9589f5331e",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "id": "1c7b5886-1cb6-42da-9d1e-b1d41b8143f5",
+      "name": "Check Certificates Table",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [220, 0],
+      "parameters": {
+        "resource": "row",
+        "operation": "getAll",
+        "tableId": "certificates",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "none"
+      }
+    }
+  ]
+}

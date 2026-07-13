@@ -1,0 +1,233 @@
+{
+  "id": "KsyCVass1x41hgUX",
+  "name": "Avuka — PDF Renderer Pipeline v2",
+  "description": "Webhook from Base44 הפק PDF → fetches FilledForm+Customer+Site → calls Python renderer on Render.com → uploads PDF to Supabase → updates FilledForm.generated_pdf",
+  "_note": "טוקנים מוטמעים הוסרו מהגיבוי (מסומנים [REDACTED]).",
+  "active": false,
+  "createdAt": "2026-06-24T11:37:16.936Z",
+  "updatedAt": "2026-06-29T07:48:39.849Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true },
+  "connections": {
+    "PDF Request Webhook": { "main": [[{ "node": "Fetch FireInspection", "type": "main", "index": 0 }, { "node": "Wake Renderer", "type": "main", "index": 0 }]] },
+    "Fetch Customer": { "main": [[{ "node": "Fetch Site", "type": "main", "index": 0 }]] },
+    "Build Render Payload": { "main": [[{ "node": "Call PDF Renderer", "type": "main", "index": 0 }]] },
+    "Call PDF Renderer": { "main": [[{ "node": "Upload PDF to Supabase", "type": "main", "index": 0 }]] },
+    "Fetch FireInspection": { "main": [[{ "node": "Fetch Customer", "type": "main", "index": 0 }]] },
+    "Build Rows URL": { "main": [[{ "node": "Fetch Form Rows", "type": "main", "index": 0 }]] },
+    "Fetch Form Rows": { "main": [[{ "node": "Build Render Payload", "type": "main", "index": 0 }]] },
+    "Upload PDF to Supabase": { "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]] },
+    "Respond Success": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] },
+    "Fetch Site": { "main": [[{ "node": "Fetch Contact", "type": "main", "index": 0 }]] },
+    "Fetch Contact": { "main": [[{ "node": "Build Rows URL", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "ef5e60b8-c092-4ae7-9ee7-25266fb4acfd",
+      "name": "PDF Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "parameters": { "httpMethod": "POST", "path": "avuka-pdf-render", "responseMode": "responseNode", "options": {} },
+      "webhookId": "d824d5be-f639-4fbd-97b5-e87cf6d61d54"
+    },
+    {
+      "id": "3841b78b-acca-4f28-9716-0f0a0f6c4969",
+      "name": "Fetch FireInspection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [224, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FireInspection/' + ($json.body?.inspection_id ?? $json.inspection_id) }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer [REDACTED-BASE44-USER-TOKEN]" }] }
+      }
+    },
+    {
+      "id": "2ff3c932-9a1c-4d25-906d-4974b0eec8ea",
+      "name": "Fetch Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [448, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Customer/' + $('Fetch FireInspection').item.json.customer_id }}",
+        "authentication": "none",
+        "genericAuthType": "",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer [REDACTED-BASE44-USER-TOKEN]" }] }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "e2e5c5fd-1a81-4f30-989a-4f2c1bfed47b",
+      "name": "Fetch Site",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [672, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Site/' + $('Fetch FireInspection').item.json.site_id }}",
+        "authentication": "none",
+        "genericAuthType": "",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer [REDACTED-BASE44-USER-TOKEN]" }] }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "b6c213cc-ee7f-4103-a026-7c5f0aab06c8",
+      "name": "Fetch Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [896, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Contact?customer_id=' + $('Fetch FireInspection').item.json.customer_id }}",
+        "authentication": "none",
+        "genericAuthType": "",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer [REDACTED-BASE44-USER-TOKEN]" }] }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "127b3c2b-c05b-4ba0-83f0-892eccbbe235",
+      "name": "Build Render Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $('PDF Request Webhook').item.json.body;\nconst insp = $('Fetch FireInspection').item.json;\nconst cust = $('Fetch Customer').item.json || {};\nconst site = $('Fetch Site').item.json || {};\nconst form_num = parseInt(body.form_num || 1);\nconst insp_id = body.inspection_id;\n\nlet contact = {};\ntry {\n  const cr = $('Fetch Contact').item.json;\n  const arr = Array.isArray(cr) ? cr : (cr && cr.data ? cr.data : []);\n  contact = arr.find(c => c.is_primary) || arr[0] || {};\n} catch (e) {}\n\nlet rawRows = [];\ntry {\n  const rowsResp = $('Fetch Form Rows').item.json;\n  if (Array.isArray(rowsResp)) rawRows = rowsResp;\n  else if (rowsResp.data && Array.isArray(rowsResp.data)) rawRows = rowsResp.data;\n} catch (e) {}\n\nconst common = {\n  date: insp.inspection_date || new Date().toLocaleDateString('he-IL'),\n  business_name: insp.customer_name || cust.name || '',\n  business_type: cust.business_type || '',\n  city: site.city || '',\n  street: site.street || '',\n  house_number: site.house_number || '',\n  zip: site.zip || '',\n  po_box: site.po_box || '',\n  contact_name: contact.full_name || cust.contact_name || '',\n  contact_role: contact.role || '',\n  contact_phone: contact.phone || cust.phone || '',\n  contact_email: contact.email || cust.email || '',\n  vat_number: cust.vat_number || '',\n  fire_file_number: insp.fire_file_number || site.fire_file_number || '',\n  inspector_name: insp.inspector_name || '',\n  inspector_id_number: insp.inspector_id_number || '',\n  company_name: 'ר.אבוקה (1993) בע\"מ',\n  chk_zarnukim: insp.chk_zarnukim === true,\n  chk_mitzmadim: insp.chk_mitzmadim === true,\n  chk_maznakim: insp.chk_maznakim === true,\n  chk_galgalon: insp.chk_galgalon === true,\n  chk_acher: insp.chk_acher === true,\n  acher_text: insp.acher_text || '',\n};\n\nconst statusMap = { present: 'קיים', absent: 'לא קיים', na: '---' };\nconst inspTypeMap = { annual: 'שוטפת שנתית', major: 'יסודית', pressure: 'לחץ', major_and_pressure: 'יסודית+לחץ' };\nconst extTypeMap = { powder: 'אבקה', halon: 'הלוקרבון', water: 'מים', foam: 'קצף', co2: 'CO2' };\n\nlet rows = [];\nif (form_num === 1) {\n  rows = rawRows.map((r, i) => ({\n    num: String(r.station_number || i + 1),\n    location: r.location || '',\n    hose: statusMap[r.hose_2inch] || '',\n    nozzle: statusMap[r.nozzle_2inch] || '',\n    cabinet: statusMap[r.equipment_cabinet] || '',\n    reel: statusMap[r.hose_reel] || '',\n    notes: r.notes || '',\n  }));\n} else if (form_num === 2) {\n  rows = rawRows.map((r, i) => ({\n    num: String(i + 1),\n    id: r.serial_number || '',\n    location: r.location || '',\n    type: extTypeMap[r.extinguisher_type] || r.extinguisher_type || '',\n    size_kg: String(r.size_kg || ''),\n    manufacturer: r.manufacturer || '',\n    next_major: r.next_major_inspection || '',\n    next_pressure: r.next_pressure_test || '',\n    ok: r.is_functional === true ? '✓' : '',\n    not_ok: r.is_functional === false ? '✓' : '',\n    insp_type: inspTypeMap[r.inspection_type] || '',\n    notes: r.notes || '',\n  }));\n}\n\nreturn { json: { inspection_id: insp_id, form_num, data: { common, rows } } };"
+      }
+    },
+    {
+      "id": "32da0905-6f06-48ab-9681-aa3fc7a73103",
+      "name": "Call PDF Renderer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1344, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka-pdf-renderer.onrender.com/render",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ form_num: $json.form_num, data: $json.data }) }}"
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "dc5dc802-6ef0-4b72-893c-be9abc6dca0f",
+      "name": "Upload PDF to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1568, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://pmxalansjajyjhjhkvla.supabase.co/functions/v1/upload-pdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer [REDACTED-SUPABASE-ANON-KEY]" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filename: 'avuka_insp' + $('Build Render Payload').item.json.form_num + '_' + $('Build Render Payload').item.json.inspection_id + '.pdf', pdf_base64: $json.pdf_base64 }) }}"
+      }
+    },
+    {
+      "id": "72d8c07e-5bea-4c4b-9bb3-75d2a63a69d6",
+      "name": "Update FilledForm PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1792, 0],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FilledForm/' + $('Build Render Payload').item.json.filled_form_id }}",
+        "authentication": "none",
+        "genericAuthType": "",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ generated_pdf: $json.url, status: 'pdf_ready' }) }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer [REDACTED-BASE44-USER-TOKEN]" }] }
+      }
+    },
+    {
+      "id": "f83672fa-6341-435d-92ac-31d49434f9de",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2016, 0],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "success", "value": true, "type": "boolean" },
+            { "id": "2", "name": "pdf_url", "value": "={{ $json.url }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cc001001-0000-0000-0000-000000000001",
+      "name": "Build Rows URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [896, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $('PDF Request Webhook').item.json.body;\nconst form_num = parseInt(body.form_num || 1);\nconst insp_id = body.inspection_id;\nconst entityMap = {1:'FireStation',2:'FireExtinguisher',3:'ElectricalPanel',4:'FireDetectionData',5:'ElectricalPanel',6:'EmergencyAnnouncementData',7:'SprinklerData'};\nconst entity = entityMap[form_num] || 'FireStation';\nconst rows_url = 'https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/' + entity + '?inspection_id=' + insp_id;\nreturn { json: { rows_url, form_num, inspection_id: insp_id } };"
+      }
+    },
+    {
+      "id": "cc001001-0000-0000-0000-000000000002",
+      "name": "Fetch Form Rows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1120, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.rows_url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer [REDACTED-BASE44-USER-TOKEN]" }] },
+        "onError": "continueRegularOutput"
+      }
+    },
+    {
+      "id": "wake-0000-0000-0000-000000000001",
+      "name": "Wake Renderer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [112, 100],
+      "parameters": {
+        "method": "GET",
+        "url": "https://avuka-pdf-renderer.onrender.com/health",
+        "authentication": "none",
+        "onError": "continueRegularOutput"
+      }
+    },
+    {
+      "id": "respond-webhook-001",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2240, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, pdf_url: $json.pdf_url }) }}"
+      }
+    }
+  ]
+}

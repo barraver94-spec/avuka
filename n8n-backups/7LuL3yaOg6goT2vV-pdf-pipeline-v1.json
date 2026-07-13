@@ -1,0 +1,202 @@
+{
+  "id": "7LuL3yaOg6goT2vV",
+  "name": "Avuka — PDF Pipeline (FilledForm → HTML → Supabase)",
+  "description": "Webhook מBase44 כשFilledForm.status=completed → קריאה לgenerateFormHTML → upload ל-Supabase → עדכון generated_pdf",
+  "_note": "טוקנים מוטמעים הוסרו מהגיבוי (מסומנים [REDACTED]).",
+  "active": false,
+  "createdAt": "2026-06-24T06:06:13.616Z",
+  "updatedAt": "2026-06-24T08:34:43.518Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true },
+  "connections": {
+    "Normalize Payload": { "main": [[{ "node": "Generate Form HTML (Base44)", "type": "main", "index": 0 }]] },
+    "Generate Form HTML (Base44)": { "main": [[{ "node": "HTML OK?", "type": "main", "index": 0 }]] },
+    "HTML OK?": { "main": [[{ "node": "Build File Info", "type": "main", "index": 0 }], []] },
+    "Build File Info": { "main": [[{ "node": "Upload HTML to Supabase Storage", "type": "main", "index": 0 }]] },
+    "Upload HTML to Supabase Storage": { "main": [[{ "node": "Update FilledForm PDF URL", "type": "main", "index": 0 }]] },
+    "Schedule Trigger": { "main": [[{ "node": "Get Pending FilledForms", "type": "main", "index": 0 }]] },
+    "Get Pending FilledForms": { "main": [[{ "node": "Split Into Items", "type": "main", "index": 0 }]] },
+    "Split Into Items": { "main": [[{ "node": "Skip If Processed", "type": "main", "index": 0 }]] },
+    "Skip If Processed": { "main": [[{ "node": "Normalize Payload", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "7eec32bd-0018-4895-9afe-b87f813f05b7",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [224, 96],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "filled_form_id", "value": "={{ $json.body?.id ?? $json.id }}", "type": "string" },
+            { "id": "2", "name": "template_id", "value": "={{ $json.body?.template_id ?? $json.template_id ?? \"\" }}", "type": "string" },
+            { "id": "3", "name": "form_data", "value": "={{ $json.body?.form_data ?? $json.form_data ?? \"{}\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3de1667e-40cd-456b-8621-c4da28a4efa7",
+      "name": "Generate Form HTML (Base44)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [448, 96],
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/functions/generateFormHTML",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ template_id: $json.template_id, form_data: (() => { try { return typeof $json.form_data === 'string' ? JSON.parse($json.form_data) : $json.form_data; } catch(e) { return {}; } })() }) }}"
+      }
+    },
+    {
+      "id": "a6753844-5161-46d0-b44b-8dccf2f22ed2",
+      "name": "HTML OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [672, 96],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            { "leftValue": "={{ $json.error }}", "operator": { "type": "string", "operation": "notExists" }, "rightValue": "" },
+            { "leftValue": "={{ $json.error }}", "operator": { "type": "string", "operation": "isEmpty" } }
+          ],
+          "combinator": "or"
+        }
+      }
+    },
+    {
+      "id": "c45ade4f-f9ba-4d19-b7e5-f80e8b6015f8",
+      "name": "Build File Info",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [896, 0],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            { "id": "4", "name": "filename", "value": "={{ \"form_\" + $(\"Normalize Payload\").item.json.filled_form_id + \"_\" + $now.toFormat(\"yyyyMMdd_HHmmss\") + \".html\" }}", "type": "string" },
+            { "id": "5", "name": "html_content", "value": "={{ $json.html }}", "type": "string" },
+            { "id": "6", "name": "filled_form_id", "value": "={{ $(\"Normalize Payload\").item.json.filled_form_id }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a4908a54-ba41-44e3-99a1-af6735ccf937",
+      "name": "Upload HTML to Supabase Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1120, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://pmxalansjajyjhjhkvla.supabase.co/functions/v1/upload-form-html",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer [REDACTED-SUPABASE-ANON-KEY]" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "filename", "value": "={{ $json.filename }}" },
+            { "name": "html_content", "value": "={{ $json.html_content }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "82bde1b5-0f4b-46a3-8700-cb85c61fb84b",
+      "name": "Update FilledForm PDF URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1344, 0],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ \"https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FilledForm/\" + $(\"Build File Info\").item.json.filled_form_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ generated_pdf: \"https://pmxalansjajyjhjhkvla.supabase.co/storage/v1/object/public/fire-forms/\" + $(\"Build File Info\").item.json.filename }) }}"
+      }
+    },
+    {
+      "id": "8e5c8f17-cfd4-4b86-bb0c-bc13fc13dbc4",
+      "name": "Sticky Note 3896af26",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [784, 256],
+      "parameters": {
+        "content": "## ⚙️ Setup Required\n\n**1. Base44 API Key credential:**\nNew → HTTP Header Auth\nHeader Name: `Authorization`\nHeader Value: `Bearer YOUR_AVUKA_APP_TOKEN`\n\n📌 To get token: log into avuka.base44.app → DevTools → Application → LocalStorage → copy `token`\n\n**2. Base44 Webhook:**\nFilledForm → action on status=completed → POST webhook URL with fields: `id`, `inspection_id`, `template_id`\n\nWebhook URL:\n`https://avuka.app.n8n.cloud/webhook/avuka-form-completed`\n\n**3. Supabase bucket:**\nBucket `fire-forms` must exist and be Public\n\n**Base44 Entity API:**\n`https://avuka.base44.app/api/apps/{appId}/entities/{EntityName}`\n\n**Base44 Function API:**\n`https://avuka.base44.app/functions/{functionName}`",
+        "color": 2
+      }
+    },
+    {
+      "id": "8b8a97d8-5f6e-4bab-aaed-3682cb0523f6",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-672, 96],
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 5 }] } }
+    },
+    {
+      "id": "d857f41a-7f9c-4a7e-adba-0eb2f712b875",
+      "name": "Get Pending FilledForms",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [-448, 96],
+      "parameters": {
+        "method": "GET",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FilledForm?status=completed",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer [REDACTED-BASE44-USER-TOKEN]" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "051e9aff-d549-47bd-96b2-c8b7c3a1a699",
+      "name": "Split Into Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-224, 96],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// HTTP Request already returns individual items (one per FilledForm)\n// Just pass them all through\nreturn $input.all().map(item => ({ json: item.json }));"
+      }
+    },
+    {
+      "id": "ed4d8e05-6345-49f4-9ef2-459252cb22cb",
+      "name": "Skip If Processed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [0, 96],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            { "leftValue": "={{ $json.generated_pdf }}", "operator": { "type": "string", "operation": "notExists" }, "rightValue": "" },
+            { "leftValue": "={{ $json.generated_pdf }}", "operator": { "type": "string", "operation": "isEmpty" } }
+          ],
+          "combinator": "or"
+        }
+      }
+    }
+  ]
+}

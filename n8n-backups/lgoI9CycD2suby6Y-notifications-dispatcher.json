@@ -1,0 +1,67 @@
+{
+  "id": "lgoI9CycD2suby6Y",
+  "name": "Notifications Dispatcher",
+  "description": "כל קריאה חדשה: שליחה לטלגרם וגם וואטסאפ ל-0525047700 (הוסר תנאי הדחיפות). נוסח הוואטסאפ שונה ל\"קריאה חדשה\" עם תווית דחיפות.",
+  "active": false,
+  "createdAt": "2026-05-27T10:15:22.724Z",
+  "updatedAt": "2026-05-29T11:49:34.877Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true, "binaryMode": "separate", "timeSavedMode": "fixed", "callerPolicy": "workflowsFromSameOwner" },
+  "connections": {
+    "New Call Webhook": { "main": [[{ "node": "Normalize Payload", "type": "main", "index": 0 }]] },
+    "Normalize Payload": { "main": [[{ "node": "Send Telegram Alert", "type": "main", "index": 0 }, { "node": "Send WhatsApp Alert", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "b2ca86b1-4416-40f9-b6b9-7745b0e331aa",
+      "name": "New Call Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 96],
+      "parameters": { "httpMethod": "POST", "path": "notifications-new-call", "responseMode": "onReceived", "options": {} },
+      "webhookId": "8b2cd9de-de6b-4cdd-9523-ea2155ae22b2"
+    },
+    {
+      "id": "f1534fca-c58c-401c-acd0-babd53c53f7c",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [224, 96],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst urgencyMap = { high: '🔴 גבוהה', normal: '🟡 רגילה', low: '🟢 נמוכה' };\nconst now = new Date();\nconst israelTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);\nconst pad = n => String(n).padStart(2, '0');\nconst dateStr = pad(israelTime.getUTCDate()) + '/' + pad(israelTime.getUTCMonth()+1) + '/' + israelTime.getUTCFullYear();\nconst timeStr = pad(israelTime.getUTCHours()) + ':' + pad(israelTime.getUTCMinutes());\nreturn [{json: {\n  id: body.id,\n  customer_name: body.customer_name || 'לא ידוע',\n  address: body.address || 'לא צוין',\n  description: body.description || 'לא צוין',\n  urgency: body.urgency || 'normal',\n  urgency_label: urgencyMap[body.urgency] || urgencyMap.normal,\n  customer_phone: body.customer_phone || '',\n  attachments_count: body.attachments_count || 0,\n  is_office_open: body.is_office_open !== false,\n  timestamp: dateStr + ' ' + timeStr,\n}}];"
+      }
+    },
+    {
+      "id": "ae72147a-72a7-4ae2-96f5-12834cdd9cdd",
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [448, 0],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "-1003764818152",
+        "text": "=🔔 *קריאת שירות חדשה #{{ $json.id }}*\n🕐 {{ $json.timestamp }}\n\n👤 *{{ $json.customer_name }}*\n📍 {{ $json.address }}\n📞 {{ $json.customer_phone }}\n📋 {{ $json.description }}\n\n⚡ דחיפות: {{ $json.urgency_label }}{{ $json.attachments_count > 0 ? \"\\n📎 \" + $json.attachments_count + \" קבצים מצורפים\" : \"\" }}{{ $json.is_office_open ? \"\" : \"\\n\\n⚠️ נפתחה מחוץ לשעות פתיחה\" }}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "b7bf5be8-f072-423b-a825-945feb0795a2"
+    },
+    {
+      "id": "e2fa3f84-51e1-4496-aa4a-03b67cc49508",
+      "name": "Send WhatsApp Alert",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [448, 200],
+      "parameters": {
+        "resource": "sms",
+        "operation": "send",
+        "from": "+972504291750",
+        "to": "+972525047700",
+        "toWhatsapp": true,
+        "message": "=🔔 קריאת שירות חדשה #{{ $('Normalize Payload').item.json.id }}\n👤 {{ $('Normalize Payload').item.json.customer_name }}\n📍 {{ $('Normalize Payload').item.json.address }}\n📞 {{ $('Normalize Payload').item.json.customer_phone }}\n📋 {{ $('Normalize Payload').item.json.description }}\n⚡ דחיפות: {{ $('Normalize Payload').item.json.urgency_label }}"
+      },
+      "onError": "continueRegularOutput"
+    }
+  ]
+}

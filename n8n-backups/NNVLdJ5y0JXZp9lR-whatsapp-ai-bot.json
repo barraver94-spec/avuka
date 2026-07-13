@@ -1,0 +1,655 @@
+{
+  "id": "NNVLdJ5y0JXZp9lR",
+  "name": "WhatsApp AI Bot",
+  "description": "הסרת דחיפות מ-summary ללקוח",
+  "active": false,
+  "createdAt": "2026-05-27T10:35:44.292Z",
+  "updatedAt": "2026-07-06T06:05:03.906Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true, "binaryMode": "separate" },
+  "connections": {
+    "WhatsApp Incoming": { "main": [[{ "node": "Parse Twilio Data", "type": "main", "index": 0 }]] },
+    "Parse Twilio Data": { "main": [[{ "node": "Is Voice Message?", "type": "main", "index": 0 }]] },
+    "Is Voice Message?": { "main": [[{ "node": "Download Voice from Twilio", "type": "main", "index": 0 }], [{ "node": "Has Image?", "type": "main", "index": 0 }]] },
+    "Get Active Conversation": { "main": [[{ "node": "Build AI Context", "type": "main", "index": 0 }]] },
+    "Build AI Context": { "main": [[{ "node": "Call Claude API", "type": "main", "index": 0 }]] },
+    "Call Claude API": { "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]] },
+    "Has Active Conversation?": { "main": [[{ "node": "Update Conversation", "type": "main", "index": 0 }], [{ "node": "Create Conversation", "type": "main", "index": 0 }]] },
+    "Update Conversation": { "main": [[{ "node": "Merge Conversation Paths", "type": "main", "index": 0 }]] },
+    "Merge Conversation Paths": { "main": [[{ "node": "Should Create Service Call?", "type": "main", "index": 0 }, { "node": "Has Media Attachment?", "type": "main", "index": 0 }, { "node": "Should Create Inquiry?", "type": "main", "index": 0 }]] },
+    "Create Conversation": { "main": [[{ "node": "Merge Conversation Paths", "type": "main", "index": 1 }]] },
+    "Should Create Service Call?": { "main": [[{ "node": "Create Service Call", "type": "main", "index": 0 }], [{ "node": "Pass Through Response", "type": "main", "index": 0 }]] },
+    "Create Service Call": { "main": [[{ "node": "Update Conv Call ID", "type": "main", "index": 0 }, { "node": "Prepare Attachments", "type": "main", "index": 0 }, { "node": "Lookup Customer (Base44)", "type": "main", "index": 0 }]] },
+    "Update Conv Call ID": { "main": [[{ "node": "Notify Dispatcher", "type": "main", "index": 0 }]] },
+    "Notify Dispatcher": { "main": [[{ "node": "Build Call Summary", "type": "main", "index": 0 }]] },
+    "Build Call Summary": { "main": [[{ "node": "Merge Response Paths", "type": "main", "index": 0 }]] },
+    "Merge Response Paths": { "main": [[{ "node": "Send WhatsApp Reply", "type": "main", "index": 0 }]] },
+    "Pass Through Response": { "main": [[{ "node": "Merge Response Paths", "type": "main", "index": 1 }]] },
+    "Prepare Attachments": { "main": [[{ "node": "Save Attachment", "type": "main", "index": 0 }]] },
+    "Has Media Attachment?": { "main": [[{ "node": "Download Attachment from Twilio", "type": "main", "index": 0 }], [{ "node": "No Media", "type": "main", "index": 0 }]] },
+    "Download Attachment from Twilio": { "main": [[{ "node": "Send Photo to Telegram", "type": "main", "index": 0 }]] },
+    "Download Voice from Twilio": { "main": [[{ "node": "Whisper Transcribe", "type": "main", "index": 0 }]] },
+    "Whisper Transcribe": { "main": [[{ "node": "Get Active Conversation", "type": "main", "index": 0 }]] },
+    "Lookup Customer (Base44)": { "main": [[{ "node": "Build Base44 Payload", "type": "main", "index": 0 }]] },
+    "Build Base44 Payload": { "main": [[{ "node": "Customer Identified?", "type": "main", "index": 0 }]] },
+    "Customer Identified?": { "main": [[{ "node": "Create Base44 ServiceCall", "type": "main", "index": 0 }], [{ "node": "Create Base44 Inquiry", "type": "main", "index": 0 }]] },
+    "Parse AI Response": { "main": [[{ "node": "Extract Intent", "type": "main", "index": 0 }]] },
+    "Extract Intent": { "main": [[{ "node": "Has Active Conversation?", "type": "main", "index": 0 }]] },
+    "Should Create Inquiry?": { "main": [[{ "node": "Map Inquiry Type", "type": "main", "index": 0 }]] },
+    "Map Inquiry Type": { "main": [[{ "node": "Create Inquiry (Intent)", "type": "main", "index": 0 }]] },
+    "Has Image?": { "main": [[{ "node": "Download Image from Twilio", "type": "main", "index": 0 }], [{ "node": "Get Active Conversation", "type": "main", "index": 0 }]] },
+    "Download Image from Twilio": { "main": [[{ "node": "Upload Image to Base44", "type": "main", "index": 0 }]] },
+    "Upload Image to Base44": { "main": [[{ "node": "Get Active Conversation", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "245791e1-cb4f-4f12-86fb-8cf7d48e9c68",
+      "name": "WhatsApp Incoming",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 240],
+      "parameters": { "httpMethod": "POST", "path": "whatsapp-incoming", "options": {} },
+      "webhookId": "f1a49202-68f3-4a66-bd66-04a011a5045a"
+    },
+    {
+      "id": "49cc76e7-2c49-4448-85b6-67614aa188aa",
+      "name": "Parse Twilio Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [224, 240],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "p1", "name": "customer_phone", "value": "={{ ($json.body?.From ?? $json.From ?? \"\").replace(\"whatsapp:\", \"\") }}", "type": "string" },
+            { "id": "p2", "name": "body", "value": "={{ $json.body?.Body ?? $json.Body ?? \"\" }}", "type": "string" },
+            { "id": "p3", "name": "num_media", "value": "={{ parseInt($json.body?.NumMedia ?? $json.NumMedia ?? \"0\") }}", "type": "number" },
+            { "id": "p4", "name": "media_url", "value": "={{ $json.body?.MediaUrl0 ?? $json.MediaUrl0 ?? \"\" }}", "type": "string" },
+            { "id": "p5", "name": "media_content_type", "value": "={{ $json.body?.MediaContentType0 ?? $json.MediaContentType0 ?? \"\" }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "96151049-65d0-4514-8264-d5d45a3eb8c9",
+      "name": "Is Voice Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [448, 240],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.media_content_type }}", "operator": { "type": "string", "operation": "startsWith" }, "rightValue": "audio" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "d1c907c8-b7e5-427e-84e6-d5a39f2554fa",
+      "name": "Reject Voice Message",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [672, 144],
+      "disabled": true,
+      "parameters": {
+        "from": "+972504291750",
+        "to": "={{ $json.customer_phone }}",
+        "toWhatsapp": true,
+        "message": "מצטער, אני לא יכול להאזין להודעות קוליות. תוכל לתאר את הבעיה בכתב?",
+        "options": {}
+      }
+    },
+    {
+      "id": "ee83f370-d327-470d-8ee3-c74b59502564",
+      "name": "Get Active Conversation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [672, 336],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "conversations",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            { "keyName": "customer_phone", "condition": "eq", "keyValue": "={{ $('Parse Twilio Data').first().json.customer_phone }}" },
+            { "keyName": "state", "condition": "neq", "keyValue": "cancelled" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "432041d3-c6a0-491d-8e56-263de5e3881c",
+      "name": "Build AI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [896, 336],
+      "parameters": {
+        "jsCode": "const msgData = $('Parse Twilio Data').first().json;\nlet messageBody = msgData.body || '';\ntry {\n  const t = $('Whisper Transcribe').first().json.text;\n  if (t && t.trim()) messageBody = t.trim();\n} catch(e) {}\nconst customerPhone = msgData.customer_phone;\nconst numMedia = parseInt(msgData.num_media) || 0;\nconst isVoiceMsg = String(msgData.media_content_type || '').startsWith('audio');\nconst visualMedia = isVoiceMsg ? 0 : numMedia;\nconst mediaUrl = msgData.media_url || '';\n\nlet activeConv = null;\ntry {\n  const convItems = $('Get Active Conversation').all();\n  let latest = null;\n  for (const it of convItems) {\n    const c = it.json;\n    if (!c || !c.last_message_at) continue;\n    if (!latest || new Date(c.last_message_at) > new Date(latest.last_message_at)) latest = c;\n  }\n  if (latest) {\n    const hoursDiff = (Date.now() - new Date(latest.last_message_at).getTime()) / 3600000;\n    if (hoursDiff < 24) activeConv = latest;\n  }\n} catch(e) {}\n\nlet stateDataRaw = activeConv ? (activeConv.state_data || {}) : {};\nlet pi = 0;\nwhile (typeof stateDataRaw === 'string' && pi < 10) {\n  try { stateDataRaw = JSON.parse(stateDataRaw); } catch(e) { stateDataRaw = {}; break; }\n  pi++;\n}\nconst stateData = (typeof stateDataRaw === 'object' && stateDataRaw !== null) ? stateDataRaw : {};\n\nconst messages = stateData.messages || [];\nconst extracted = stateData.extracted || {};\nconst extractedStr = JSON.stringify(extracted, null, 2);\nconst activeCallId = activeConv ? activeConv.active_call_id : null;\n\nlet userContent = messageBody || '';\nif (visualMedia > 0) userContent = (userContent ? userContent + '\\n' : '') + '[הלקוח שלח תמונה/קובץ]';\nif (!userContent) userContent = '(פנה ללא טקסט)';\n\nconst israelTime = new Date(Date.now() + 3 * 60 * 60 * 1000);\nconst dow = israelTime.getUTCDay();\nconst totalMin = israelTime.getUTCHours() * 60 + israelTime.getUTCMinutes();\nconst isOpen = dow >= 0 && dow <= 4 && totalMin >= 450 && totalMin < 1020;\n\nlet officeHoursNote = '';\nif (!isOpen) {\n  const nextOpen = (dow === 4 && totalMin >= 1020) || dow === 5 || dow === 6 ? 'ביום ראשון הקרוב' : 'מחר בבוקר';\n  officeHoursNote = '\\n\\nהמשרד סגור כרגע (שעות פתיחה ראשון-חמישי 7:30-17:00). כשתפתח קריאה, ציין שנציג ייצור קשר ' + nextOpen + '. עדיין פתח קריאה כרגיל.';\n}\n\nlet activeCallNote = '';\nif (activeCallId) activeCallNote = '\\n\\nקריאה #' + activeCallId + ' כבר פתוחה. אם עדכון - ענה בחיוב שהמשרד יעדכן.';\n\nconst businessInfo = '\\n\\nמידע על אבוקה: כתובת: דרך בר יהודה 113 נשר | וייז: https://ul.waze.com/ul?venue_id=22937928.229706957.34438&overview=yes | שעות: ראשון-חמישי 7:30-17:00 | טלפון: 04-8212912';\n\nconst systemPrompt = 'אתה עוזר שירות לקוחות של חברת אבוקה - חברה ישראלית לכיבוי אש, ספרינקלרים ובטיחות.\\n\\nמשימה: שיחה ידידותית בעברית לאיסוף פרטי פנייה והעברתה למשרד.\\n\\nטון: חם, נחמד ומזמין - כמו נציג אנושי שמח לעזור. שלב אימוג\\'ים בודדים ומתאימים (כמו 😊 🙏 🔧) כדי שיהיה נעים, אבל בלי להגזים - אימוג\\'י אחד פה ושם, לא בכל שורה.\\n\\nפרטים לאיסוף: customer_name, company, address, description, urgency (high/low/normal).\\n\\nסיווג הפנייה (intent) - סווג כל שיחה לאחד מאלה:\\n- malfunction = תקלה/בעיה טכנית/דליפה/מערכת לא תקינה\\n- quote = בקשת הצעת מחיר/עלות\\n- certificate = בקשת אישור/אסמכתא/תעודה/מסמך\\n- general_question = שאלה כללית/מידע/שעות/כתובת\\n\\nכללים:\\n1. שיחה טבעית, חמה וקצרה - לא רובוטית.\\n2. חלץ את כל הפרטים שהלקוח כבר נתן - קרא היטב את כל היסטוריית השיחה לפני שאתה שואל.\\n3. אשר ללקוח בחום שהבנת את הבעיה במשפט קצר לפני שאתה ממשיך (למשל: הבנתי, נזילה מספרינקלר במפעל - נדאג לטפל בזה). אל תזכיר דחיפות.\\n4. שאל רק פרטים שעדיין חסרים. אם חסרים כמה פרטים - שאל את כולם יחד בהודעה אחת, לא אחד-אחד. אם הלקוח כבר תיאר את התקלה - אל תשאל שוב מה הבעיה. אם כבר נתן כתובת - אל תבקש כתובת.\\n5. הפרטים הדרושים: שם, חברה (אם יש), כתובת, תיאור התקלה.\\n6. חובה: מלא את extracted_data בכל הפרטים הידועים מכל השיחה (customer_name, company, address, description, urgency). אם פרט נאמר אי-פעם בשיחה - שים אותו ב-extracted_data, אל תשאיר null.\\n7. אל תחזור לעולם על שאלה שכבר נענתה, גם לא בניסוח אחר.\\n8. ברגע שיש שם, כתובת ותיאור - עבור מיד לסיכום, אל תשאל שום שאלה נוספת לפני הסיכום. אם הגיעה תמונה כשכל הפרטים כבר ידועים - הצג את הסיכום מיד באותה תשובה, אל תשאל שוב במה מדובר.\\n9. הצג סיכום ובקש אישור (שם, חברה, כתובת, תיאור). אם הלקוח עדיין לא שלח תמונה ולא התייחס לכך - סיים את הודעת הסיכום בשורה: אם יש לך תמונה של התקלה, אפשר לצרף אותה עכשיו 📷. אל תציג דחיפות ללקוח.\\n10. חובה: כשהלקוח מאשר את הסיכום (כן / נכון / מאשר / אפשר / סבבה / בסדר) - החזר should_create_call: true וקבע intent מתאים. אל תאשר פתיחה בלי should_create_call: true.\\n11. אסור להודיע ללקוח שנפתחה קריאה או שהפנייה הועברה למשרד אלא אם should_create_call=true באותה תשובה בדיוק. אם response_text מודיע על פתיחת קריאה - should_create_call חייב להיות true.\\n12. ענה בעברית. urgency הוא שדה פנימי בלבד - לעולם אל תזכיר ללקוח דחיפות, אל תכתוב דחוף או לא דחוף בשום הודעה, כולל באישור ההבנה ובסיכום.\\n13. נסח את אישור הסיכום לפי סוג הפנייה: לתקלה - נפתחה קריאת שירות ונציג ייצור קשר; להצעת מחיר/אישור/שאלה - הפנייה הועברה למשרד ונציג יחזור אליך. אל תפנה לטלפון המשרד.' + activeCallNote + officeHoursNote + businessInfo + '\\n\\nמידע שנאסף עד כה (extracted): ' + extractedStr + '\\n\\nכלל פורמט: אל תשתמש בגרשיים כפולים בתוך response_text.\\n\\nענה ONLY ב-JSON:\\n{\"response_text\":\"טקסט ללקוח\",\"extracted_data\":{\"customer_name\":null,\"company\":null,\"address\":null,\"description\":null,\"urgency\":\"normal\"},\"intent\":\"malfunction\",\"should_create_call\":false}';\n\nreturn [{json: {\n  system_prompt: systemPrompt,\n  api_messages_json: JSON.stringify([...messages.slice(-10), { role: 'user', content: userContent }]),\n  customer_phone: customerPhone,\n  conversation_id: activeConv ? activeConv.id : null,\n  has_active_conv: !!activeConv,\n  current_state_data_json: JSON.stringify(stateData),\n  new_user_message: userContent,\n  num_media: visualMedia,\n  media_url: mediaUrl,\n  active_call_id: activeCallId,\n  is_office_open: isOpen,\n}}];"
+      }
+    },
+    {
+      "id": "7598fa54-eb86-447f-99a9-4cbc1f53a810",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 336],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }, { "name": "content-type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"model\": \"claude-sonnet-4-6\", \"max_tokens\": 1024, \"system\": $json.system_prompt, \"messages\": JSON.parse($json.api_messages_json)} }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "9d5f6c4e-8de0-4bc9-bf60-93a13fbaf416",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1344, 336],
+      "parameters": {
+        "jsCode": "const buildData = $('Build AI Context').first().json;\nconst apiResult = $('Call Claude API').first().json;\nconst rawText = (apiResult.content?.[0]?.text || '').trim();\nlet claudeData = { response_text: '', extracted_data: {}, should_create_call: false };\n\nif (!rawText) {\n  claudeData.response_text = 'מצטער, הייתה שגיאה זמנית. תנסה שוב.';\n} else {\n  let parsed = false;\n  const candidates = [rawText, rawText.replace(/```json\\n?|```\\n?/g,'').trim()];\n  for (const c of candidates) {\n    try { claudeData = JSON.parse(c); parsed = true; break; } catch(e) {}\n  }\n  if (!parsed) {\n    try {\n      const m = rawText.match(/\"response_text\"\\s*:\\s*\"([\\s\\S]*?)\"\\s*,\\s*\"extracted_data\"/);\n      if (m) {\n        const rt = m[1].replace(/\\\\n/g, '\\n');\n        const rest = rawText.substring(rawText.indexOf('\"extracted_data\"'));\n        try {\n          const partial = JSON.parse('{' + rest + '}');\n          claudeData = { response_text: rt, extracted_data: partial.extracted_data || {}, should_create_call: partial.should_create_call === true };\n        } catch(e) { claudeData = { response_text: rt, extracted_data: {}, should_create_call: false }; }\n        parsed = true;\n      }\n    } catch(e) {}\n  }\n  if (!parsed) claudeData = { response_text: rawText, extracted_data: {}, should_create_call: false };\n}\n\nconst extracted = claudeData.extracted_data || {};\nconst prevStateData = JSON.parse(buildData.current_state_data_json || '{}');\nconst prevExtracted = prevStateData.extracted || {};\nconst prevMessages = prevStateData.messages || [];\nconst prevAttachments = prevStateData.attachments || [];\n\nconst mergedExtracted = {\n  customer_name: extracted.customer_name || prevExtracted.customer_name || null,\n  company: extracted.company || prevExtracted.company || null,\n  address: extracted.address || prevExtracted.address || null,\n  description: extracted.description || prevExtracted.description || null,\n  urgency: extracted.urgency || prevExtracted.urgency || 'normal',\n};\n\nconst responseText = claudeData.response_text || 'מצטער, לא הצלחתי לעבד. תנסה שוב.';\nconst updatedMessages = [...prevMessages, { role: 'user', content: buildData.new_user_message }, { role: 'assistant', content: responseText }].slice(-20);\n\nconst updatedAttachments = [...prevAttachments];\ntry {\n  const up = $('Upload Image to Base44').first().json;\n  const url = up && (up.file_url || up.url || (up.data && up.data.file_url));\n  if (url) updatedAttachments.push({ url, type: 'image' });\n} catch(e) {}\n\nconst newStateData = { messages: updatedMessages, extracted: mergedExtracted, attachments: updatedAttachments };\nlet shouldCreateCall = claudeData.should_create_call === true;\n// Guard: אם המודל הודיע ללקוח שנפתחה קריאה/הפנייה הועברה אבל שכח את הדגל - מיישרים לפי ההודעה\nif (!shouldCreateCall) {\n  const announced = /נפתחה קריאת שירות|נפתחה קריאה|הפנייה הועברה למשרד|העברתי את הפנייה|הפנייה נקלטה/.test(responseText);\n  const hasDetails = !!(mergedExtracted.description && mergedExtracted.address && mergedExtracted.customer_name);\n  if (announced && hasDetails) shouldCreateCall = true;\n}\nconst fullName = mergedExtracted.customer_name ? (mergedExtracted.company ? mergedExtracted.customer_name + ' - ' + mergedExtracted.company : mergedExtracted.customer_name) : '';\n\nreturn [{json: {\n  has_active_conv: buildData.has_active_conv,\n  conversation_id: buildData.conversation_id,\n  next_state: shouldCreateCall ? 'completed' : 'in_progress',\n  state_data_json: JSON.stringify(newStateData),\n  response_text: responseText,\n  should_create_call: shouldCreateCall,\n  urgency: mergedExtracted.urgency || 'normal',\n  customer_name: fullName,\n  address: mergedExtracted.address || '',\n  description: mergedExtracted.description || '',\n  customer_phone: buildData.customer_phone,\n  active_call_id: buildData.active_call_id,\n  is_office_open: buildData.is_office_open,\n  attachments: updatedAttachments,\n  attachments_count: updatedAttachments.length,\n}}];"
+      }
+    },
+    {
+      "id": "db3c8fa8-468a-41d7-a7b6-5e6221bb9375",
+      "name": "Has Active Conversation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1568, 336],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.has_active_conv }}", "operator": { "type": "boolean", "operation": "true" } }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "77800e22-a596-4770-9a56-f3034ef19166",
+      "name": "Update Conversation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1792, 240],
+      "parameters": {
+        "operation": "update",
+        "tableId": "conversations",
+        "matchType": "allFilters",
+        "filters": { "conditions": [{ "keyName": "id", "condition": "eq", "keyValue": "={{ $('Parse AI Response').first().json.conversation_id }}" }] },
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "state", "fieldValue": "={{ $('Parse AI Response').first().json.next_state }}" },
+            { "fieldId": "state_data", "fieldValue": "={{ $('Parse AI Response').first().json.state_data_json }}" },
+            { "fieldId": "last_message_at", "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "452e2e5e-d943-4654-b76c-2344ddd631fe",
+      "name": "Merge Conversation Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [2016, 336],
+      "parameters": {}
+    },
+    {
+      "id": "6cfef4b2-7def-436a-932d-1452cd342fc2",
+      "name": "Create Conversation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1792, 432],
+      "parameters": {
+        "tableId": "conversations",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "customer_phone", "fieldValue": "={{ $('Parse AI Response').first().json.customer_phone }}" },
+            { "fieldId": "state", "fieldValue": "={{ $('Parse AI Response').first().json.next_state }}" },
+            { "fieldId": "state_data", "fieldValue": "={{ $('Parse AI Response').first().json.state_data_json }}" },
+            { "fieldId": "last_message_at", "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a4fb8308-a0df-4e6d-b2cc-85efd8cda16f",
+      "name": "Should Create Service Call?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2240, 176],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [
+            { "leftValue": "={{ $('Parse AI Response').first().json.should_create_call }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": "" },
+            { "leftValue": "={{ $('Extract Intent').first().json.intent }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "malfunction" }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3c15a9b3-0a02-4522-b8d2-9bdc9fa9f288",
+      "name": "Create Service Call",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2464, 96],
+      "parameters": {
+        "tableId": "service_calls",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "customer_name", "fieldValue": "={{ $('Parse AI Response').first().json.customer_name }}" },
+            { "fieldId": "address", "fieldValue": "={{ $('Parse AI Response').first().json.address }}" },
+            { "fieldId": "description", "fieldValue": "={{ $('Parse AI Response').first().json.description }}" },
+            { "fieldId": "urgency", "fieldValue": "={{ $('Parse AI Response').first().json.urgency }}" },
+            { "fieldId": "customer_phone", "fieldValue": "={{ $('Parse AI Response').first().json.customer_phone }}" },
+            { "fieldId": "status", "fieldValue": "new" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4427d76c-d300-42a8-9ab8-bed0a1c349d5",
+      "name": "Update Conv Call ID",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2688, 0],
+      "parameters": {
+        "operation": "update",
+        "tableId": "conversations",
+        "matchType": "allFilters",
+        "filters": { "conditions": [{ "keyName": "id", "condition": "eq", "keyValue": "={{ $('Parse AI Response').first().json.conversation_id }}" }] },
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "active_call_id", "fieldValue": "={{ $json.id }}" },
+            { "fieldId": "ended_at", "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "f4a7af76-9f7e-40e7-8726-e579fe880526",
+      "name": "Notify Dispatcher",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2912, 0],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.app.n8n.cloud/webhook/notifications-new-call",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"id\": $(\"Create Service Call\").first().json.id, \"customer_name\": $(\"Parse AI Response\").first().json.customer_name, \"address\": $(\"Parse AI Response\").first().json.address, \"description\": $(\"Parse AI Response\").first().json.description, \"urgency\": $(\"Parse AI Response\").first().json.urgency, \"customer_phone\": $(\"Parse AI Response\").first().json.customer_phone, \"attachments_count\": $(\"Parse AI Response\").first().json.attachments_count, \"is_office_open\": $(\"Parse AI Response\").first().json.is_office_open} }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "6926a846-5d08-41c2-af28-bfdbf3823d49",
+      "name": "Build Call Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [3136, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cs1",
+              "name": "response_text",
+              "value": "=✅ בקשה #{{ $(\"Create Service Call\").first().json.id }} נרשמה בהצלחה.\n\n👤 {{ $(\"Parse AI Response\").first().json.customer_name }}\n📍 {{ $(\"Parse AI Response\").first().json.address }}\n📋 {{ $(\"Parse AI Response\").first().json.description }}\n\n{{ $(\"Parse AI Response\").first().json.is_office_open ? \"נציג מהמשרד ייצור איתך קשר בהקדם.\" : \"⚠️ המשרד סגור כרגע. נציג ייצור איתך קשר ביום העסקים הבא.\" }}",
+              "type": "string"
+            },
+            { "id": "cs2", "name": "customer_phone", "value": "={{ $('Parse AI Response').first().json.customer_phone }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c33c352e-b25c-4612-8bc7-8a96865abf14",
+      "name": "Merge Response Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [3360, 176],
+      "parameters": {}
+    },
+    {
+      "id": "846a92fa-67c7-4834-a7cb-d4847493c26c",
+      "name": "Pass Through Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [3136, 336],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "pt1", "name": "response_text", "value": "={{ $('Parse AI Response').first().json.response_text }}", "type": "string" },
+            { "id": "pt2", "name": "customer_phone", "value": "={{ $('Parse AI Response').first().json.customer_phone }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7b2c46b9-58dc-404e-9350-8680d1e543e8",
+      "name": "Prepare Attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2688, 192],
+      "parameters": {
+        "jsCode": "const id = $('Create Service Call').first().json.id;\nconst atts = $('Parse AI Response').first().json.attachments || [];\nif (!atts.length) return [];\nreturn atts.map(a => ({ json: { service_call_id: id, file_url: a.url, file_type: a.type || 'image' } }));"
+      }
+    },
+    {
+      "id": "c5386c03-1025-4026-8475-9f33fad7e481",
+      "name": "Save Attachment",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2912, 192],
+      "parameters": {
+        "tableId": "attachments",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "service_call_id", "fieldValue": "={{ $json.service_call_id }}" },
+            { "fieldId": "file_url", "fieldValue": "={{ $json.file_url }}" },
+            { "fieldId": "file_type", "fieldValue": "={{ $json.file_type }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "795ad8b1-c788-4802-92f1-91743f9d9bde",
+      "name": "Has Media Attachment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [3184, -368],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $('Parse Twilio Data').first().json.num_media }}", "operator": { "type": "number", "operation": "gt" }, "rightValue": 0 }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c6636c6f-8dcd-4c64-bd73-08f53f604d5f",
+      "name": "Download Attachment from Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2464, 480],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ $('Parse Twilio Data').first().json.media_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twilioApi",
+        "options": {}
+      }
+    },
+    {
+      "id": "c647fa77-d9b6-4d9d-b52c-0b98e4424716",
+      "name": "Send Photo to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2688, 480],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "-1003764818152",
+        "binaryData": true,
+        "additionalFields": { "caption": "=📎 צירוף מלקוח {{ $('Parse AI Response').first().json.customer_phone }}" }
+      },
+      "webhookId": "343df1b3-5a1e-4e51-896a-1bc70679be7d"
+    },
+    {
+      "id": "da881b98-3cf3-478e-b7a5-0a9890b96565",
+      "name": "No Media",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2464, 672],
+      "parameters": { "assignments": { "assignments": [] }, "options": {} }
+    },
+    {
+      "id": "3c8085c0-9ceb-485d-aa54-0c4cfe981456",
+      "name": "Send WhatsApp Reply",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [3584, 176],
+      "parameters": {
+        "from": "+972504291750",
+        "to": "={{ $json.customer_phone }}",
+        "toWhatsapp": true,
+        "message": "={{ $json.response_text }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "26b29f45-5332-4203-8a88-a6fef8242b69",
+      "name": "Download Voice from Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [672, 48],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ $('Parse Twilio Data').first().json.media_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twilioApi",
+        "options": {}
+      }
+    },
+    {
+      "id": "501967bb-f679-4d1a-b467-1366ba6476e1",
+      "name": "Whisper Transcribe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 48],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" },
+            { "name": "model", "value": "whisper-1" },
+            { "name": "language", "value": "he" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5bdb1965-ebff-4020-92a3-9195e112498c",
+      "name": "Lookup Customer (Base44)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [2464, 320],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ \"https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Customer?phone=\" + ($('Parse AI Response').first().json.customer_phone || '').replace('whatsapp:','').replace('+972','0') }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "2906b67e-3308-46fe-873e-c23ff2f1d605",
+      "name": "Build Base44 Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2688, 320],
+      "parameters": {
+        "jsCode": "const p = $('Parse AI Response').first().json;\nlet custId = '';\ntry {\n  const items = $('Lookup Customer (Base44)').all();\n  if (items.length && items[0].json && items[0].json.id) custId = items[0].json.id;\n} catch(e) {}\nconst today = new Date(Date.now() + 3*3600*1000).toISOString().slice(0,10);\nconst isUrgent = (p.urgency === 'high' || p.urgency === 'urgent');\nconst images = (p.attachments || []).map(a => a && a.url).filter(Boolean);\nreturn [{ json: {\n  identified: !!custId,\n  customer_id: custId,\n  call_type: isUrgent ? 'urgent_malfunction' : 'malfunction',\n  department: 'service',\n  open_date: today,\n  problem_description: p.description || '',\n  customer_name: p.customer_name || '',\n  address: p.address || '',\n  phone: (p.customer_phone||'').replace('whatsapp:','').replace('+972','0'),\n  urgency_inq: isUrgent ? 'urgent' : 'normal',\n  images\n} }];"
+      }
+    },
+    {
+      "id": "e1e47377-4b18-4f16-9914-c658f5631812",
+      "name": "Customer Identified?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2912, 320],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $json.identified }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": "" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "2f6b23e4-38c9-49d8-bc9c-9b93468c9f2f",
+      "name": "Create Base44 ServiceCall",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [3136, 240],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/ServiceCall",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"customer_id\": $json.customer_id, \"call_type\": $json.call_type, \"department\": $json.department, \"open_date\": $json.open_date, \"problem_description\": $json.problem_description, \"customer_name\": $json.customer_name, \"status\": \"open\", \"site_selection_mode\": \"manual\", \"site_name_manual\": $json.address, \"site_address_manual\": $json.address, \"images\": $json.images} }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "f5e8a829-8f0b-46a5-9e80-f813c7694bba",
+      "name": "Create Base44 Inquiry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [3136, 400],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/CustomerInquiry",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"customer_name\": $json.customer_name, \"phone\": $json.phone, \"address\": $json.address, \"description\": $json.problem_description, \"inquiry_type\": \"malfunction\", \"urgency\": $json.urgency_inq, \"status\": \"new\", \"source\": \"whatsapp\", \"images\": $json.images} }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "8044d7fe-fb0b-42f6-ae02-d05e2aef9b04",
+      "name": "Extract Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1488, 544],
+      "parameters": {
+        "jsCode": "const raw = ((($('Call Claude API').first().json.content) || [])[0]?.text || '').trim();\nlet intent = 'malfunction';\ntry {\n  const c = raw.replace(/```json/g,'').replace(/```/g,'').trim();\n  const o = JSON.parse(c);\n  if (o && o.intent) intent = o.intent;\n} catch(e) {}\nreturn [{ json: { ...$('Parse AI Response').first().json, intent } }];"
+      }
+    },
+    {
+      "id": "cc30f13f-a4f4-4490-bd71-57721e5257c8",
+      "name": "Should Create Inquiry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2240, 464],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [
+            { "leftValue": "={{ $('Parse AI Response').first().json.should_create_call }}", "operator": { "type": "boolean", "operation": "true" }, "rightValue": "" },
+            { "leftValue": "={{ $('Extract Intent').first().json.intent }}", "operator": { "type": "string", "operation": "notEquals" }, "rightValue": "malfunction" }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "8ca1d6ac-7c41-4f09-9dd8-bcdb2f739bc4",
+      "name": "Map Inquiry Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2464, 544],
+      "parameters": {
+        "jsCode": "const p = $('Parse AI Response').first().json;\nconst it = $('Extract Intent').first().json.intent;\nconst map = { quote: 'quote', certificate: 'other', general_question: 'general_question' };\nconst inquiry_type = map[it] || 'other';\nconst isUrgent = (p.urgency === 'high' || p.urgency === 'urgent');\nconst images = (p.attachments || []).map(a => a && a.url).filter(Boolean);\nreturn [{ json: {\n  customer_name: p.customer_name || '',\n  phone: (p.customer_phone || '').replace('whatsapp:','').replace('+972','0'),\n  address: p.address || '',\n  description: p.description || '',\n  inquiry_type,\n  urgency_inq: isUrgent ? 'urgent' : 'normal',\n  images\n} }];"
+      }
+    },
+    {
+      "id": "74a5f3c8-a341-449b-813e-f72b4408ee1e",
+      "name": "Create Inquiry (Intent)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [2688, 544],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/CustomerInquiry",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"customer_name\": $json.customer_name, \"phone\": $json.phone, \"address\": $json.address, \"description\": $json.description, \"inquiry_type\": $json.inquiry_type, \"urgency\": $json.urgency_inq, \"status\": \"new\", \"source\": \"whatsapp\", \"images\": $json.images} }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a4c6c6f9-d520-441a-9d0a-1395511325a4",
+      "name": "Has Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [560, 544],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [
+            { "leftValue": "={{ $('Parse Twilio Data').first().json.media_content_type }}", "operator": { "type": "string", "operation": "startsWith" }, "rightValue": "image" },
+            { "leftValue": "={{ $('Parse Twilio Data').first().json.media_content_type }}", "operator": { "type": "string", "operation": "startsWith" }, "rightValue": "video" }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "4c9c01ca-8914-49b5-9ddb-8d6a3c53bc7b",
+      "name": "Download Image from Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [768, 640],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ $('Parse Twilio Data').first().json.media_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twilioApi",
+        "options": {}
+      }
+    },
+    {
+      "id": "14c37aaf-05f8-4b36-b99c-a2c7024fd571",
+      "name": "Upload Image to Base44",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [992, 640],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/integration-endpoints/Core/UploadFile",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": { "parameters": [{ "parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data" }] },
+        "options": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,243 @@
+{
+  "id": "j6tehsj96cqIXzQF",
+  "name": "PDF Import - Fire Forms",
+  "description": "מקבל webhook מ-Base44 עם file_url + draft_id, מוריד PDF, מחלץ טקסט, מסווג לטופס 1-7 ע\"י Claude, מחלץ שדות common עם confidence scores, מתאים לקוח קיים ומעדכן ImportedFormDraft ל-ready_for_review.",
+  "active": false,
+  "createdAt": "2026-06-30T12:59:34.877Z",
+  "updatedAt": "2026-06-30T14:16:36.856Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true, "binaryMode": "separate" },
+  "connections": {
+    "PDF Import Trigger": { "main": [[{ "node": "Download File", "type": "main", "index": 0 }]] },
+    "Download File": { "main": [[{ "node": "Is PDF?", "type": "main", "index": 0 }]] },
+    "Is PDF?": { "main": [[{ "node": "Extract PDF Text", "type": "main", "index": 0 }], [{ "node": "Fail - Not PDF", "type": "main", "index": 0 }]] },
+    "Extract PDF Text": { "main": [[{ "node": "Has Text?", "type": "main", "index": 0 }]] },
+    "Has Text?": { "main": [[{ "node": "Build Classify Body", "type": "main", "index": 0 }], [{ "node": "Fail - Scanned PDF", "type": "main", "index": 0 }]] },
+    "Build Classify Body": { "main": [[{ "node": "AI Classify Form", "type": "main", "index": 0 }]] },
+    "AI Classify Form": { "main": [[{ "node": "Parse Classify + Build Extract", "type": "main", "index": 0 }]] },
+    "Parse Classify + Build Extract": { "main": [[{ "node": "AI Extract Fields", "type": "main", "index": 0 }]] },
+    "AI Extract Fields": { "main": [[{ "node": "Parse Extraction", "type": "main", "index": 0 }]] },
+    "Parse Extraction": { "main": [[{ "node": "Fetch Customers", "type": "main", "index": 0 }]] },
+    "Fetch Customers": { "main": [[{ "node": "Match Customer + Build Payload", "type": "main", "index": 0 }]] },
+    "Match Customer + Build Payload": { "main": [[{ "node": "Update Draft - Ready", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "f822b697-2844-4ae7-a010-dfde0e774511",
+      "name": "PDF Import Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 192],
+      "parameters": { "httpMethod": "POST", "path": "fire-form-pdf-import", "options": {} },
+      "webhookId": "1dfd13c0-6b96-4c0e-8b01-222798d65ecd"
+    },
+    {
+      "id": "1b67c9c7-4de2-4195-a6db-39accc125f35",
+      "name": "Download File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [224, 192],
+      "parameters": {
+        "url": "={{ $json.body.file_url }}",
+        "options": { "response": { "response": { "responseFormat": "file", "outputPropertyName": "pdfBinary" } } }
+      }
+    },
+    {
+      "id": "6d44e414-a2de-440b-87ae-290aa7aec28c",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [448, 192],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "conditions": [{ "leftValue": "={{ $('PDF Import Trigger').item.json.body.file_name }}", "operator": { "type": "string", "operation": "endsWith" }, "rightValue": ".pdf" }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a77db404-d082-4e70-96a5-4f73cd92375f",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [672, 96],
+      "parameters": { "operation": "pdf", "binaryPropertyName": "pdfBinary", "options": {} }
+    },
+    {
+      "id": "2cbd2992-c7b5-4005-8659-82f5372c9def",
+      "name": "Has Text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [896, 96],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [{ "id": "text-check", "leftValue": "={{ ($json.text || '').length }}", "operator": { "operation": "gt", "type": "number" }, "rightValue": 80 }],
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "1dc32888-91ab-4524-a45b-6df7dde9c595",
+      "name": "Build Classify Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 0],
+      "parameters": {
+        "jsCode": "\nconst text = $input.item.json.text || '';\nconst trig = $('PDF Import Trigger').item.json.body;\nreturn [{\n  json: {\n    draft_id: trig.draft_id,\n    file_name: trig.file_name,\n    pdf_text: text,\n    anthropic_body: JSON.stringify({\n      model: \"claude-haiku-4-5-20251001\",\n      max_tokens: 300,\n      system: \"זהה את סוג טופס כיבוי האש. החזר JSON בלבד: {form_type:<1-7 או null>,confidence:<0-1>,reason:<string>}\\n\\nטפסים:\\n1=עמדות כיבוי/גלגלונים/זרנוקים\\n2=מטפים מיטלטלים\\n3=משאבות\\n4=גילוי אש\\n5=כיבוי בלוחות חשמל\\n6=כריזת חירום\\n7=ספרינקלרים/מתזים\",\n      messages: [{role:\"user\",content:\"טקסט מהטופס (500 תווים ראשונים):\\n\"+text.substring(0,500)}]\n    })\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "5c05847e-fc08-42e2-88c5-18295d17a997",
+      "name": "AI Classify Form",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1344, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }, { "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.anthropic_body }}",
+        "options": {},
+        "credentials": { "httpHeaderAuth": { "id": "YxF4LaGzWLEAp2rY", "name": "Anthropic API Key" } }
+      }
+    },
+    {
+      "id": "01873561-5fcc-4138-97cf-121d722ce790",
+      "name": "Parse Classify + Build Extract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 0],
+      "parameters": {
+        "jsCode": "\nconst raw = ($input.item.json.content || [])[0]?.text || '{}';\nlet cls = {form_type: null, confidence: 0};\ntry {\n  const m = raw.match(/\\{[\\s\\S]*?\\}/);\n  cls = JSON.parse(m ? m[0] : '{}');\n} catch(e) {}\n\nconst prev = $('Build Classify Body').item.json;\n\nconst sysPrompt = \"חלץ שדות מטופס כיבוי אש ישראלי. החזר JSON בלבד (ללא טקסט אחר):\\n\" +\n\"{\\n\" +\n\"  \\\"common\\\": {\\n\" +\n\"    \\\"business_name\\\": null,\\n\" +\n\"    \\\"business_type\\\": null,\\n\" +\n\"    \\\"business_number\\\": null,\\n\" +\n\"    \\\"address_street\\\": null,\\n\" +\n\"    \\\"address_house_number\\\": null,\\n\" +\n\"    \\\"address_city\\\": null,\\n\" +\n\"    \\\"address_zip\\\": null,\\n\" +\n\"    \\\"contact_name\\\": null,\\n\" +\n\"    \\\"contact_role\\\": null,\\n\" +\n\"    \\\"contact_phone\\\": null,\\n\" +\n\"    \\\"contact_email\\\": null,\\n\" +\n\"    \\\"inspection_date_day\\\": null,\\n\" +\n\"    \\\"inspection_date_month\\\": null,\\n\" +\n\"    \\\"inspection_date_year\\\": null,\\n\" +\n\"    \\\"inspector_id\\\": null\\n\" +\n\"  },\\n\" +\n\"  \\\"rows\\\": [],\\n\" +\n\"  \\\"confidence_scores\\\": {\\n\" +\n\"    \\\"business_name\\\": 0.0, \\\"business_type\\\": 0.0, \\\"business_number\\\": 0.0,\\n\" +\n\"    \\\"address_street\\\": 0.0, \\\"address_city\\\": 0.0,\\n\" +\n\"    \\\"contact_name\\\": 0.0, \\\"contact_phone\\\": 0.0,\\n\" +\n\"    \\\"inspection_date_day\\\": 0.0, \\\"inspection_date_month\\\": 0.0, \\\"inspection_date_year\\\": 0.0\\n\" +\n\"  }\\n\" +\n\"}\";\n\nreturn [{\n  json: {\n    draft_id: prev.draft_id,\n    pdf_text: prev.pdf_text,\n    form_type: cls.form_type,\n    classification_confidence: cls.confidence || 0,\n    anthropic_body: JSON.stringify({\n      model: \"claude-haiku-4-5-20251001\",\n      max_tokens: 2048,\n      system: sysPrompt,\n      messages: [{\n        role: \"user\",\n        content: \"סוג טופס: \" + (cls.form_type || \"לא ידוע\") + \"\\nטקסט:\\n\" + prev.pdf_text.substring(0, 3500)\n      }]\n    })\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "01795584-c961-41e7-9dc3-4007a2944a99",
+      "name": "AI Extract Fields",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1792, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }, { "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.anthropic_body }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": { "httpHeaderAuth": { "id": "YxF4LaGzWLEAp2rY", "name": "Anthropic API Key" } }
+      }
+    },
+    {
+      "id": "8121b896-00f8-432a-8f60-64a16d849b7a",
+      "name": "Parse Extraction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2016, 0],
+      "parameters": {
+        "jsCode": "\nconst raw = ($input.item.json.content || [])[0]?.text || '{}';\nlet extracted = {common:{}, rows:[], confidence_scores:{}};\ntry {\n  const m = raw.match(/\\{[\\s\\S]*\\}/);\n  extracted = JSON.parse(m ? m[0] : '{}');\n} catch(e) {}\n\nconst prev = $('Parse Classify + Build Extract').item.json;\n\nreturn [{\n  json: {\n    draft_id: prev.draft_id,\n    form_type: prev.form_type,\n    classification_confidence: prev.classification_confidence,\n    pdf_text: prev.pdf_text,\n    extracted_data: JSON.stringify({\n      common: extracted.common || {},\n      rows: extracted.rows || []\n    }),\n    confidence_scores: JSON.stringify(extracted.confidence_scores || {}),\n    business_name_search: ((extracted.common || {}).business_name || '').trim().toLowerCase(),\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "da41e90b-59e7-44d3-b216-4823392c9fe8",
+      "name": "Fetch Customers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [2240, 0],
+      "executeOnce": true,
+      "parameters": {
+        "url": "https://base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Customer",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": { "httpHeaderAuth": { "id": "YoubGbcaJW5dPNHX", "name": "Base44 API Key" } }
+      }
+    },
+    {
+      "id": "5d499856-ba87-4ef7-b1f4-9f81c81b477b",
+      "name": "Match Customer + Build Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2464, 0],
+      "parameters": {
+        "jsCode": "\nconst prev = $('Parse Extraction').item.json;\nconst customersRaw = $input.item.json;\n\nconst customers = Array.isArray(customersRaw)\n  ? customersRaw\n  : Array.isArray(customersRaw?.data) ? customersRaw.data : [];\n\nconst searchName = prev.business_name_search || '';\nlet matchedId = null, matchedName = null, matchScore = 0;\n\nif (searchName && customers.length) {\n  for (const c of customers) {\n    const cName = (c.name || c.business_name || '').trim().toLowerCase();\n    if (!cName) continue;\n    const longer = Math.max(searchName.length, cName.length);\n    if (!longer) continue;\n    const shorter = Math.min(searchName.length, cName.length);\n    let charMatches = 0;\n    for (let i = 0; i < shorter; i++) {\n      if (searchName[i] === cName[i]) charMatches++;\n    }\n    const includeBonus = (cName.includes(searchName) || searchName.includes(cName)) ? 0.35 : 0;\n    const score = (charMatches / longer) + includeBonus;\n    if (score > matchScore && score > 0.4) {\n      matchScore = score;\n      matchedId = c.id;\n      matchedName = c.name || c.business_name;\n    }\n  }\n}\n\nconst payload = {\n  status: 'ready_for_review',\n  detected_form_type: String(prev.form_type || 'unknown'),\n  classification_confidence: prev.classification_confidence || 0,\n  extracted_data: prev.extracted_data,\n  confidence_scores: prev.confidence_scores,\n  import_raw_text: (prev.pdf_text || '').substring(0, 4000),\n  auto_match_confidence: matchScore,\n};\nif (matchedId) payload.customer_id = matchedId;\nif (matchedName) payload.customer_name = matchedName;\n\nreturn [{\n  json: {\n    draft_id: prev.draft_id,\n    payload: payload\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "3c1d26b6-bd8c-4d9f-85ca-a7886931905c",
+      "name": "Update Draft - Ready",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [2688, 0],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://base44.app/api/apps/6980462d4df5bc1deda167e6/entities/ImportedFormDraft/\" + $json.draft_id }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.payload) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": { "httpHeaderAuth": { "id": "YoubGbcaJW5dPNHX", "name": "Base44 API Key" } }
+      }
+    },
+    {
+      "id": "685da9d6-c26e-4a11-8ef6-57a6cd30b04a",
+      "name": "Fail - Scanned PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1120, 192],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://base44.app/api/apps/6980462d4df5bc1deda167e6/entities/ImportedFormDraft/\" + $('PDF Import Trigger').item.json.body.draft_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "status", "value": "failed" },
+            { "name": "error_message", "value": "PDF סרוק — לא ניתן לחלץ טקסט אוטומטית. יש להזין ידנית." }
+          ]
+        },
+        "options": {},
+        "credentials": { "httpHeaderAuth": { "id": "YoubGbcaJW5dPNHX", "name": "Base44 API Key" } }
+      }
+    },
+    {
+      "id": "04ecdadc-f2ed-46cc-8cd5-c5363fb81334",
+      "name": "Fail - Not PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [672, 288],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://base44.app/api/apps/6980462d4df5bc1deda167e6/entities/ImportedFormDraft/\" + $('PDF Import Trigger').item.json.body.draft_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "status", "value": "failed" },
+            { "name": "error_message", "value": "קובץ לא נתמך — יש להעלות PDF בלבד." }
+          ]
+        },
+        "options": {},
+        "credentials": { "httpHeaderAuth": { "id": "YoubGbcaJW5dPNHX", "name": "Base44 API Key" } }
+      }
+    }
+  ]
+}

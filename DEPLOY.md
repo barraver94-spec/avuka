@@ -49,22 +49,17 @@ https://avuka-pdf-renderer.onrender.com
 
 ---
 
-## שלב 4 — עדכן את ה-URL ב-n8n
+## שלב 4 — עדכן את ה-URL בפונקציות Base44
 
-ברגע שיש לך את ה-URL מ-Render:
+> הערה היסטורית: בעבר הצינור עבר דרך n8n (workflow KsyCVass1x41hgUX). חשבון ה־n8n נמחק —
+> גיבוי הוורקפלואים נמצא בתיקיית `n8n-backups/`. כיום Base44 קורא לרנדרר ישירות.
 
-1. לך ל-https://avuka.app.n8n.cloud/workflow/KsyCVass1x41hgUX
-2. לחץ על נוד **"Call PDF Renderer"**
-3. שנה את ה-URL מ:
-   ```
-   https://REPLACE_WITH_RENDER_URL/render
-   ```
-   ל:
-   ```
-   https://avuka-pdf-renderer.onrender.com/render
-   ```
-   (או ה-URL האמיתי שקיבלת)
-4. שמור ו-**Publish** מחדש
+ברגע שיש לך את ה-URL מ-Render, עדכן את הקבוע `RENDERER_URL` בפונקציות
+Base44 (אפליקציית "אבוקה CRM"):
+
+- `base44/functions/generateFormPdf/entry.ts`
+- `base44/functions/generateMergedPdf/entry.ts`
+- `base44/functions/extractFormPage/entry.ts`
 
 ---
 
@@ -96,8 +91,8 @@ https://avuka-pdf-renderer.onrender.com/health
 
 ```
 Base44 [הפק PDF]
-    ↓ POST { filled_form_id, form_num }
-n8n webhook (KsyCVass1x41hgUX)
+    ↓ base44.functions.invoke('generateFormPdf', { filled_form_id, form_num })
+Base44 Function generateFormPdf
     ↓ Fetch FilledForm + Customer + Site
     ↓ Build payload { common, rows }
 Render.com /render  ←── Flask + Pillow + PyMuPDF
@@ -105,7 +100,7 @@ Render.com /render  ←── Flask + Pillow + PyMuPDF
 Supabase Edge Function upload-pdf
     ↓ Uploads to fire-forms bucket
     ↓ Returns public URL
-n8n → PATCH FilledForm.generated_pdf = URL
+generateFormPdf → עדכון FilledForm.generated_pdf = URL
 Base44 → מציג כפתור הורדה
 ```
 

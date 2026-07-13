@@ -1,0 +1,186 @@
+{
+  "id": "zMEb3Vy1CZu4EjS1",
+  "name": "Avuka — Smart Request (Natural Language → FilledForms)",
+  "description": "כל 5 דקות — שאילתה ל-FireInspections עם smart_request=pending → Claude מנתח → יוצר FilledForms → מעדכן סטטוס",
+  "active": false,
+  "createdAt": "2026-06-24T06:10:12.322Z",
+  "updatedAt": "2026-06-28T06:38:28.119Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true, "binaryMode": "separate" },
+  "connections": {
+    "Poll Every 5 Minutes": { "main": [[{ "node": "Get Pending Smart Requests", "type": "main", "index": 0 }]] },
+    "Get Pending Smart Requests": { "main": [[{ "node": "Process One Request", "type": "main", "index": 0 }]] },
+    "Mark as Processing": { "main": [[{ "node": "Get Previous Inspections", "type": "main", "index": 0 }]] },
+    "Get Previous Inspections": { "main": [[{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]] },
+    "Build Claude Prompt": { "main": [[{ "node": "Call Claude API", "type": "main", "index": 0 }]] },
+    "Call Claude API": { "main": [[{ "node": "Parse Claude Response", "type": "main", "index": 0 }]] },
+    "Create FilledForms in Base44": { "main": [[{ "node": "Mark Smart Request Done", "type": "main", "index": 0 }]] },
+    "Mark Smart Request Done": { "main": [[{ "node": "Process One Request", "type": "main", "index": 0 }]] },
+    "Process One Request": { "main": [[{ "node": "All Done", "type": "main", "index": 0 }], [{ "node": "Mark as Processing", "type": "main", "index": 0 }]] },
+    "Parse Claude Response": { "main": [[{ "node": "Split By Form Type", "type": "main", "index": 0 }]] },
+    "Split By Form Type": { "main": [[{ "node": "Create FilledForms in Base44", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "2391b40c-4d5e-4c77-980e-78d01bf7c5c6",
+      "name": "Poll Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 192],
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "*/5 * * * *" }] } }
+    },
+    {
+      "id": "09d10df5-1132-41cf-afce-730e35036a5b",
+      "name": "Get Pending Smart Requests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [224, 192],
+      "parameters": {
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FireInspection?smart_request_status=pending",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "53cff405-adeb-4a55-a7a3-280ccbc79e17",
+      "name": "All Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [672, 0],
+      "parameters": {}
+    },
+    {
+      "id": "359a1056-b41b-40d0-9e9d-e2f04abd3954",
+      "name": "Mark as Processing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [672, 192],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ \"https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FireInspection/\" + $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"smart_request_status\": \"processing\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "eeba7ba8-c015-462a-a7bf-2d671f9def2e",
+      "name": "Get Previous Inspections",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [896, 192],
+      "parameters": {
+        "url": "={{ \"https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FireInspection?customer_id=\" + $json.customer_id + \"&sort=-inspection_date&limit=3\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "16ac6173-f88c-4bf7-b642-512565ebeaf9",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 192],
+      "parameters": {
+        "jsCode": "const currentInspection = $(\"Mark as Processing\").item.json;\nconst prevInspections = $input.all().map(i => i.json).filter(i => i.id !== currentInspection.id);\n\nconst prevSummary = prevInspections.length > 0\n  ? JSON.stringify(prevInspections[0], null, 2)\n  : 'אין ביקורות קודמות';\n\nconst prompt = `אתה עוזר לחברת כיבוי אש ישראלית. המנהל ביקש:\\n\\n\"${currentInspection.smart_request}\"\\n\\nפרטי ביקורת נוכחית:\\n- מזהה לקוח: ${currentInspection.customer_id}\\n- שם לקוח: ${currentInspection.customer_name || 'לא ידוע'}\\n- תאריך ביקורת: ${currentInspection.inspection_date}\\n\\nביקורת אחרונה (JSON):\\n${prevSummary}\\n\\nבהתאם לבקשה, החזר JSON תקין בלבד (ללא הסבר) בפורמט:\\n{\\n  \"form_types\": [\"1\"],\\n  \"copy_from_inspection_id\": \"prev_id_or_null\",\\n  \"notes\": \"הערות לביקורת\",\\n  \"form_data_override\": {}\\n}`;\n\nreturn [{ json: {\n  prompt,\n  inspection_id: currentInspection.id,\n  customer_id: currentInspection.customer_id,\n  inspection_date: currentInspection.inspection_date,\n  filled_by: currentInspection.created_by_id || 'automation',\n  copy_from_id: prevInspections.length > 0 ? prevInspections[0].id : null\n}}];"
+      }
+    },
+    {
+      "id": "f79ae75a-f632-4d8f-b4e7-8ebf0f53afee",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1344, 192],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: \"claude-sonnet-4-6\", max_tokens: 1024, messages: [{ role: \"user\", content: $json.prompt }] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "d482e63c-125e-423a-9a2b-6822651e68ad",
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 192],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const claudeText = $input.item.json.content[0].text;\nlet parsed;\ntry {\n  const jsonMatch = claudeText.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(jsonMatch ? jsonMatch[0] : claudeText);\n} catch(e) {\n  parsed = { form_types: ['1'], copy_from_inspection_id: null, notes: '', form_data_override: {} };\n}\n\nconst buildNode = $(\"Build Claude Prompt\").item.json;\n\nreturn { json: {\n  form_types: parsed.form_types || ['1'],\n  copy_from_inspection_id: parsed.copy_from_inspection_id || buildNode.copy_from_id,\n  notes: parsed.notes || '',\n  form_data_override: parsed.form_data_override || {},\n  inspection_id: buildNode.inspection_id,\n  customer_id: buildNode.customer_id,\n  inspection_date: buildNode.inspection_date,\n  filled_by: buildNode.filled_by\n}};"
+      }
+    },
+    {
+      "id": "9ab24e24-e4b6-46d2-992a-e8ec969c498c",
+      "name": "Create FilledForms in Base44",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1792, 192],
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FilledForm",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ template_id: $json.template_id, customer_id: $json.customer_id, filled_by: $json.filled_by, form_data: $json.form_data, status: $json.status, fill_date: $json.fill_date, notes: $json.notes }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "87c2f50d-e4d2-4a7c-b072-6442ea6acd09",
+      "name": "Mark Smart Request Done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [2016, 272],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ \"https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/FireInspection/\" + $(\"Build Claude Prompt\").item.json.inspection_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"smart_request_status\": \"done\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "227148e5-9113-4d10-aecd-debf37a87bba",
+      "name": "Process One Request",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [448, 192],
+      "parameters": { "options": {} }
+    },
+    {
+      "id": "10f21347-455d-4172-b919-e1b4b5eced04",
+      "name": "Sticky Note 811e27cf",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1008, 336],
+      "parameters": {
+        "content": "## ⚙️ Setup Required\n\n**Anthropic API Key credential:**\nNew → HTTP Header Auth\n- Header Name: `x-api-key`\n- Header Value: `YOUR_ANTHROPIC_API_KEY`\n\n**Usage:**\nIn Base44 → FireInspection → fill `smart_request` field in natural language.\nn8n will pick it up within 5 minutes, call Claude, and create FilledForms automatically.",
+        "color": 4
+      }
+    },
+    {
+      "id": "1d0b8a8c-acb9-43a4-84f3-c63abdb3f079",
+      "name": "Split By Form Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 192],
+      "parameters": {
+        "jsCode": "const result = [];\nfor (const item of $input.all()) {\n  const d = item.json;\n  for (const ft of (d.form_types || ['1'])) {\n    result.push({ json: {\n      template_id: ft,\n      customer_id: d.customer_id,\n      filled_by: d.filled_by || 'automation',\n      form_data: JSON.stringify(d.form_data_override || {}),\n      status: 'draft',\n      fill_date: d.inspection_date,\n      notes: d.notes || '',\n      inspection_id: d.inspection_id\n    }});\n  }\n}\nreturn result;"
+      }
+    }
+  ]
+}

@@ -1,0 +1,211 @@
+{
+  "id": "pivqBPFCggD9Tzm2",
+  "name": "Avuka — Morning Schedule → Draft Tasks",
+  "description": "מושך משימות יומיות מגיליון Google Sheets בשעה 07:30, מזהה לקוח/אתר/מחלקה ע\"י Claude Haiku, ויוצר טיוטות ב-ScheduledTask. כולל idempotency — לא יוצר כפולות.",
+  "active": false,
+  "createdAt": "2026-06-28T05:14:43.360Z",
+  "updatedAt": "2026-06-28T06:45:16.259Z",
+  "settings": { "executionOrder": "v1", "availableInMCP": true, "binaryMode": "separate" },
+  "connections": {
+    "Daily 07:30": { "main": [[{ "node": "Build Today Sheet", "type": "main", "index": 0 }]] },
+    "Build Today Sheet": { "main": [[{ "node": "Read Today Sheet", "type": "main", "index": 0 }]] },
+    "Read Today Sheet": { "main": [[{ "node": "Extract Tasks", "type": "main", "index": 0 }]] },
+    "Extract Tasks": { "main": [[{ "node": "Aggregate Tasks", "type": "main", "index": 0 }]] },
+    "Aggregate Tasks": { "main": [[{ "node": "Load Customers", "type": "main", "index": 0 }]] },
+    "Load Customers": { "main": [[{ "node": "Load Sites", "type": "main", "index": 0 }]] },
+    "Load Sites": { "main": [[{ "node": "Load Technicians", "type": "main", "index": 0 }]] },
+    "Load Technicians": { "main": [[{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]] },
+    "Build Claude Prompt": { "main": [[{ "node": "Claude Identify", "type": "main", "index": 0 }]] },
+    "Claude Identify": { "main": [[{ "node": "Parse Matches", "type": "main", "index": 0 }]] },
+    "Parse Matches": { "main": [[{ "node": "Load Existing Drafts", "type": "main", "index": 0 }]] },
+    "Filter New Only": { "main": [[{ "node": "Create Draft", "type": "main", "index": 0 }]] },
+    "Load Existing Drafts": { "main": [[{ "node": "Safe Load Drafts", "type": "main", "index": 0 }]] },
+    "Safe Load Drafts": { "main": [[{ "node": "Filter New Only", "type": "main", "index": 0 }]] }
+  },
+  "nodes": [
+    {
+      "id": "369915d8-d4b5-41b2-9180-d33a83eee599",
+      "name": "Daily 07:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 0],
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 30 7 * * *" }] } }
+    },
+    {
+      "id": "88a1b4b5-f8c1-429b-8e55-66a4b3c24407",
+      "name": "Build Today Sheet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [224, 0],
+      "parameters": {
+        "jsCode": "const months = {1:'ינואר',2:'פברואר',3:'מרץ',4:'אפריל',5:'מאי',6:'יוני',7:'יולי',8:'אוגוסט',9:'ספטמבר',10:'אוקטובר',11:'נובמבר',12:'דצמבר'};\nconst now = new Date();\nconst israelOffset = 3 * 60;\nconst localTime = new Date(now.getTime() + israelOffset * 60000);\nconst day = localTime.getUTCDate();\nconst month = localTime.getUTCMonth() + 1;\nconst year = localTime.getUTCFullYear();\nconst sheetName = day + ' ' + months[month];\nconst isoDate = year + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0');\nreturn [{ json: { sheetName, isoDate } }];"
+      }
+    },
+    {
+      "id": "d06018c9-c60d-4906-90e3-7f2cce8dacee",
+      "name": "Read Today Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [448, 0],
+      "parameters": {
+        "url": "={{ 'https://sheets.googleapis.com/v4/spreadsheets/1K2Frb160ZPS3VY5QJl4cUo0-UlRNxcj6HxsYqQMYzB0/values/' + encodeURIComponent($json.sheetName + '!A1:T70') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      }
+    },
+    {
+      "id": "34d31a58-11f1-4b26-a6c2-4397b9257ac6",
+      "name": "Extract Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [672, 0],
+      "parameters": {
+        "jsCode": "const rows = ($input.first().json.values || []);\nconst isoDate = $('Build Today Sheet').first().json.isoDate;\nif (rows.length === 0) return [];\n\n// Find the actual header row (contains 'משימה' or 'שם טכנאי')\nlet headerRowIdx = -1;\nlet taskColIndices = [];\nfor (let r = 0; r < Math.min(rows.length, 5); r++) {\n  const row = rows[r] || [];\n  const hasTask = row.some(h => String(h).trim() === 'משימה');\n  const hasTech = row.some(h => String(h).includes('שם טכנאי'));\n  if (hasTask || hasTech) {\n    headerRowIdx = r;\n    for (let c = 0; c < row.length; c++) {\n      if (String(row[c]).trim() === 'משימה') taskColIndices.push(c);\n    }\n    break;\n  }\n}\nif (taskColIndices.length === 0) taskColIndices = [3, 4, 5, 6];\nconst startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 2;\n\n// Values that mean no actual work task\nconst skipWords = ['חופש', 'מילואים', 'חה\"ש', 'מחלה', 'גיוס'];\n\nlet currentDept = '';\nconst tasks = [];\n\nfor (let r = startRow; r < rows.length; r++) {\n  const row = rows[r];\n  if (!row || row.length < 2) continue;\n\n  const col0 = String(row[0] || '').trim();  // dept section label or empty\n  const col1 = String(row[1] || '').trim();  // tech first name\n  const col2 = String(row[2] || '').trim();  // second tech or last name\n\n  // Track department from section headers in col0\n  if (col0 && !col0.includes('|') && !col0.includes(':') && !col0.includes('/')) {\n    currentDept = col0;\n  }\n\n  // Skip rows with no technician name\n  if (!col1) continue;\n\n  // Build tech name: combine col1 + col2 if both present\n  const techName = (col2 && col2 !== col1) ? col1 + ' ' + col2 : col1;\n\n  // Extract tasks from task columns\n  for (const c of taskColIndices) {\n    const cellVal = String(row[c] || '').trim();\n    if (!cellVal) continue;\n    if (skipWords.some(w => cellVal.includes(w))) continue;\n    tasks.push({ json: { techName, freeText: cellVal, isoDate, sheetDept: currentDept || null } });\n  }\n}\nreturn tasks;"
+      }
+    },
+    {
+      "id": "f3d1f15b-51f1-4e71-9b7c-4bebc8f9d8f7",
+      "name": "Aggregate Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [896, 0],
+      "parameters": {
+        "jsCode": "const tasks = $input.all().map((item, idx) => ({\n  task_index: idx,\n  techName: item.json.techName,\n  freeText: item.json.freeText,\n  isoDate: item.json.isoDate,\n  sheetDept: item.json.sheetDept || null\n}));\nconst isoDate = tasks[0]?.isoDate || '';\nreturn [{ json: { tasks, isoDate } }];"
+      }
+    },
+    {
+      "id": "92df9429-134e-4214-8162-58e388c46eef",
+      "name": "Load Customers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1120, 0],
+      "executeOnce": true,
+      "parameters": {
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Customer?limit=200",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "6e285f1a-e565-40dc-98eb-866af51bdf38",
+      "name": "Load Sites",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1344, 0],
+      "executeOnce": true,
+      "parameters": {
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Site?limit=500",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "280bdb4b-1070-4ce0-bb98-48013392ef36",
+      "name": "Load Technicians",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1568, 0],
+      "executeOnce": true,
+      "parameters": {
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/Technician?limit=200",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "2ca362a1-f82a-4c3b-ada9-a640d22a09d5",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1792, 0],
+      "parameters": {
+        "jsCode": "const tasks = $('Aggregate Tasks').first().json.tasks || [];\nconst isoDate = $('Aggregate Tasks').first().json.isoDate || '';\n\n// Load Customers/Sites/Technicians may return N items (one per entity) or 1 item with wrapper\n// Use .all() and handle both cases\nfunction extractList(nodeName) {\n  const items = $(nodeName).all();\n  if (items.length === 0) return [];\n  const first = items[0].json;\n  // If first item looks like an entity (has 'id'), assume items are individual entities\n  if (first.id) return items.map(i => i.json);\n  // Otherwise unwrap from entities/data wrapper\n  return first.entities || first.data || [];\n}\n\nconst custList = extractList('Load Customers').map(c => ({ id: c.id, name: c.name }));\nconst siteList = extractList('Load Sites').map(s => ({ id: s.id, name: s.name, customer_id: s.customer_id }));\nconst techList = extractList('Load Technicians').map(t => ({ id: t.id, full_name: t.full_name, department: t.department }));\n\nconst prompt = `You are a service call identification assistant for an Israeli fire protection company. Tasks are in Hebrew.\n\nDEPARTMENT MAPPING (sheetDept field is the Hebrew section header from the schedule):\n- שירות → service\n- גילוי → fire_detection\n- מתזים → sprinklers\n- משאבות → pumps\n\nCUSTOMERS (${custList.length} total):\n${JSON.stringify(custList)}\n\nSITES (${siteList.length} total):\n${JSON.stringify(siteList)}\n\nTECHNICIANS (${techList.length} total):\n${JSON.stringify(techList)}\n\nTASKS FROM TODAY'S SCHEDULE:\n${JSON.stringify(tasks)}\n\nFor each task:\n- Match techName to the closest technician full_name. Accept partial first-name match (e.g. 'טל' matches 'טל רוטהולץ').\n- Match freeText to customer name (ok=clear match, maybe=partial/city hint, none=no recognizable match).\n- Match freeText to site name (ok=clear match, maybe=partial, none=no match).\n- Use sheetDept as the primary department hint (map using DEPARTMENT MAPPING). If sheetDept is null, infer from freeText.\n\nReturn ONLY a valid JSON array, no code blocks, no markdown:\n[{\"task_index\":0,\"technician_id\":\"...or null\",\"customer_id\":\"...or null\",\"customer_match\":\"ok|maybe|none\",\"site_id\":\"...or null\",\"site_match\":\"ok|maybe|none\",\"department\":\"service|pumps|sprinklers|fire_detection\"}]`;\n\nreturn [{ json: { prompt, tasks, isoDate, techList } }];"
+      }
+    },
+    {
+      "id": "8ce57c37-42b1-4eae-94cf-af49bb5a0398",
+      "name": "Claude Identify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2016, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"model\": \"claude-haiku-4-5-20251001\", \"max_tokens\": 4096, \"messages\": [{ \"role\": \"user\", \"content\": $json.prompt }] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "686ee750-2f2a-4f03-be8b-25616820f20b",
+      "name": "Parse Matches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 0],
+      "parameters": {
+        "jsCode": "const claudeResponse = $input.first().json;\nconst rawText = (claudeResponse.content || []).find(c => c.type === 'text')?.text || '[]';\n\nlet matches = [];\ntry {\n  const jsonMatch = rawText.match(/\\[\\s*\\{[\\s\\S]*?\\}\\s*\\]/);\n  if (jsonMatch) matches = JSON.parse(jsonMatch[0]);\n  else matches = JSON.parse(rawText.trim());\n} catch(e) {\n  return [];\n}\n\nconst tasks = $('Build Claude Prompt').first().json.tasks || [];\nconst techList = $('Build Claude Prompt').first().json.techList || [];\nconst isoDate = $('Build Claude Prompt').first().json.isoDate || '';\n\nreturn matches.map(m => {\n  const task = tasks[m.task_index] || {};\n  const tech = techList.find(t => t.id === m.technician_id) || {};\n  return {\n    json: {\n      isoDate,\n      techName: task.techName || '',\n      freeText: task.freeText || '',\n      technician_id: m.technician_id || '',\n      technician_name: tech.full_name || task.techName || '',\n      customer_id: m.customer_id || null,\n      site: m.site_id || null,\n      customer_match: m.customer_match || 'none',\n      site_match: m.site_match || 'none',\n      department: m.department || null\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "2e6b4d12-ab52-4b58-b44f-508616840cf8",
+      "name": "Load Existing Drafts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2464, 0],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "url": "={{ 'https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/ScheduledTask?date=' + $json.isoDate + '&status=draft&limit=200' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "323f427c-02e2-4497-a971-84f7e7321bd8",
+      "name": "Filter New Only",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2688, 0],
+      "parameters": {
+        "jsCode": "// existingDrafts comes from Safe Load Drafts (always 1 item)\nconst existingDrafts = ($input.first()?.json?.existingDrafts) || [];\n// Use technician_name + free_text as stable idempotency key (technician_id may be null on first pass)\nconst existingKeys = new Set(existingDrafts.map(e => \n  (e.technician_name || '').trim() + '|' + (e.free_text || '').trim()\n));\n\n// All matched tasks from Parse Matches\nconst matchedItems = $('Parse Matches').all();\n\nconst newItems = matchedItems.filter(item => {\n  const key = (item.json.technician_name || item.json.techName || '').trim() + '|' + (item.json.freeText || '').trim();\n  return !existingKeys.has(key);\n});\n\nreturn newItems.map(item => ({ json: item.json }));"
+      }
+    },
+    {
+      "id": "0d609cea-bd74-49db-aff7-974ebd089e52",
+      "name": "Create Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2912, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "https://avuka.base44.app/api/apps/6980462d4df5bc1deda167e6/entities/ScheduledTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ \"date\": $json.isoDate, \"technician_id\": $json.technician_id, \"technician_name\": $json.technician_name, \"free_text\": $json.freeText, \"work_description\": $json.freeText, \"customer_id\": $json.customer_id, \"site\": $json.site, \"status\": \"draft\", \"source\": \"work_schedule\", \"customer_match\": $json.customer_match, \"site_match\": $json.site_match, \"department\": $json.department }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "0cada04c-e2c4-4964-95af-1c67d9b2da5b",
+      "name": "Safe Load Drafts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2576, 0],
+      "parameters": {
+        "jsCode": "// Normalize Load Existing Drafts response — always output exactly 1 item\nconst items = $input.all();\nlet drafts = [];\nif (items.length > 0) {\n  const body = items[0].json;\n  if (Array.isArray(body)) {\n    drafts = body;\n  } else {\n    drafts = body.entities || body.data || [];\n  }\n}\nreturn [{ json: { existingDrafts: drafts } }];"
+      }
+    }
+  ]
+}
